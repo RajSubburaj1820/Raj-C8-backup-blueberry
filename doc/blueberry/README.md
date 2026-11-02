@@ -30,8 +30,8 @@ The application is accessible under localhost:9082
 ### Dashboard page
 The dashboard shows backup status for the cluster.
 
-The **Backup timeline** chart lists each backup ID from the merged backup list.
-The chart uses one bar per backup ID.
+The **Backup timeline** chart lists up to **20** most recent backup IDs from the merged backup list (newest first).
+Bar colors reflect status: complete, partial, in progress, failed, or unknown.
 
 The backup card shows these counts:
 
@@ -39,8 +39,17 @@ The backup card shows these counts:
 - Complete backups (all active components reported the ID)
 - Partial backups (one or more active components did not report the ID)
 - Failed backups
+- **Latest backup** — highest backup ID, status, and time when available
+- **In progress** — warning banner and step text while a backup job is running
 
-Use **Refresh** to reload dashboard data.
+The **Cluster parameters** card shows topology (size, partitions, replication factor) and **Zeebe exporter** status
+(exporters enabled/disabled). This is not the same as broker export *pause* during backup; pause is handled inside the backup job.
+
+**Scheduler** on the dashboard stays inactive until the scheduler feature is implemented (v2).
+
+Use **Refresh** to reload dashboard data. The page auto-refreshes dashboard data every **2 minutes** and connections every **60 seconds**.
+
+If the timeline is empty, either no backups exist yet or Blueberry cannot reach Zeebe/actuator endpoints (see Connection card).
 
 ![Blueberry_Dashboard.png](images/Blueberry_Dashboard.png)
 
@@ -64,10 +73,24 @@ The Restore page lists backups from the same API as the Backup page.
 
 Each row shows backup ID, time, status, and components.
 
-The **Restore** button stays disabled when the backup is partial or incomplete.
-Move the pointer over the button to read the reason.
+1. Click **Restore** on a complete backup row.
+2. Read the preflight result in the confirm dialog.
+3. Click **Start restore** to run the restore plan for the selected Camunda version.
 
-Full restore automation is not available in this release.
+The backend runs automated preflight and records each restore phase.
+Kubernetes and Zeebe broker steps are **manual** until cluster automation is enabled.
+Follow the official restore link in the dialog and see `doc/restore/README.md` in this repository.
+
+**API endpoints**
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/blueberry/api/restore/phases` | Phase list for the active Camunda version |
+| GET | `/blueberry/api/restore/preflight?backupId=` | Completeness gate before restore |
+| POST | `/blueberry/api/restore/start` | Start restore plan (`{"backupId": n}`) |
+| GET | `/blueberry/api/restore/monitor` | Progress and operation log |
+
+The **Restore** button stays disabled when the backup is partial or incomplete.
 
 ### Camunda version selector
 

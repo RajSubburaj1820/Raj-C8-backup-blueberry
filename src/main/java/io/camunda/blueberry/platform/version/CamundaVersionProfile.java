@@ -1,5 +1,6 @@
 package io.camunda.blueberry.platform.version;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,6 +20,27 @@ public record CamundaVersionProfile(
                 "docsRestoreUrl", docsRestoreUrl,
                 "zeebeExportPauseSoftQuery", zeebeExportPauseSoftQuery,
                 "minHelmChartVersionForZeebeRestore", minHelmChartVersionForZeebeRestore
+        );
+    }
+
+    /**
+     * Ordered restore phases for this Camunda minor (ES path). Kubernetes broker steps stay manual until K8sConnect is live.
+     */
+    public List<RestorePhase> restorePhases() {
+        String doc = docsRestoreUrl;
+        return List.of(
+                RestorePhase.automated("preflight", "Validate backup completeness"),
+                RestorePhase.manual("es_templates", "Restore Elasticsearch templates",
+                        "Follow " + doc + " — start components briefly on a clean datastore if required."),
+                RestorePhase.manual("es_snapshots", "Restore Elasticsearch snapshots (Operate, Tasklist, Optimize, Zeebe records)",
+                        "Use the same backup ID for every snapshot. See " + doc),
+                RestorePhase.manual("zeebe_scale_down", "Scale down Zeebe brokers",
+                        "Manual Kubernetes step. See doc/restore/README.md in this repository."),
+                RestorePhase.manual("zeebe_broker_restore", "Restore Zeebe broker data (ZEEBE_RESTORE)",
+                        "Requires Helm chart >= " + minHelmChartVersionForZeebeRestore + ". See " + doc),
+                RestorePhase.manual("zeebe_scale_up", "Scale up Zeebe brokers",
+                        "Manual Kubernetes step after restore pods complete."),
+                RestorePhase.automated("verify", "Post-restore verification checklist")
         );
     }
 

@@ -2,7 +2,7 @@
 //
 // Restore
 //
-// List backups and prepare restore (automation in a later release)
+// List backups, preflight, start restore plan, monitor progress
 //
 // -----------------------------------------------------------
 
@@ -12,6 +12,7 @@ import {Button, InlineNotification, Tag} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
+import {Card, Modal} from "react-bootstrap";
 
 
 class Restore extends React.Component {
@@ -20,15 +21,37 @@ class Restore extends React.Component {
         super();
         this.state = {
             listBackups: [],
+            phases: [],
             display: {loading: false},
-            status: ""
+            status: "",
+            selectedBackup: null,
+            showConfirm: false,
+            preflight: null,
+            restoreMonitor: {statusRestore: "READY"},
+            preflightLoading: false
         };
         this.refreshListBackup = this.refreshListBackup.bind(this);
         this.refreshListBackupCallback = this.refreshListBackupCallback.bind(this);
+        this.monitorRestore = this.monitorRestore.bind(this);
     }
 
     componentDidMount() {
         this.refreshListBackup();
+        this.loadPhases();
+        this.monitorRestore();
+        this.monitorInterval = setInterval(this.monitorRestore, 5000);
+    }
+
+    componentWillUnmount() {
+        clearInterval(this.monitorInterval);
+    }
+
+    loadPhases() {
+        RestCallService.getInstance().getJson('blueberry/api/restore/phases?', this, (httpPayload) => {
+            if (!httpPayload.isError()) {
+                this.setState({phases: httpPayload.getData().phases || []});
+            }
+        });
     }
 
     render() {
@@ -38,8 +61,12 @@ class Restore extends React.Component {
                     <div className="col-md-10">
                         <h1 className="title">Restore</h1>
                         <InlineNotification kind="info" hideCloseButton="true" lowContrast="false">
-                            Select a complete backup to start a restore. Partial backups cannot be restored.
+                            Select a complete backup to start a restore plan. Kubernetes steps are manual until cluster automation is enabled.
                         </InlineNotification>
+                        {this.state.status &&
+                            <InlineNotification kind="error" hideCloseButton="true" lowContrast="false">
+                                {this.state.status}
+                            </InlineNotification>}
                     </div>
                 </div>
                 <div className="row" style={{marginTop: "10px"}}>
@@ -51,6 +78,8 @@ class Restore extends React.Component {
                         </Button>
                     </div>
                 </div>
+
+                {this.renderMonitorCard()}
 
                 <table id="runnersTable" className="table is-hoverable is-fullwidth">
                     <thead>
@@ -80,8 +109,67 @@ class Restore extends React.Component {
                     ) : null}
                     </tbody>
                 </table>
+
+                {this.state.phases.length > 0 &&
+                    <Card style={{marginTop: "16px"}}>
+                        <Card.Header>Restore phases (Camunda version profile)</Card.Header>
+                        <Card.Body>
+                            <ol>
+                                {this.state.phases.map((p) =>
+                                    <li key={p.id}>
+                                        {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
+                                    </li>)}
+                            </ol>
+                        </Card.Body>
+                    </Card>}
+
+                <Modal show={this.state.showConfirm} onHide={() => this.setState({showConfirm: false})}>
+                    <Modal.Header closeButton>
+                        <Modal.Title>Confirm restore for backup {this.state.selectedBackup?.backupId}</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        <p>This action plans a destructive restore. The platform may be unavailable during restore.</p>
+                        {this.state.preflightLoading && <p>Checking preflight...</p>}
+                        {this.state.preflight && !this.state.preflight.allowed &&
+                            <InlineNotification kind="error" hideCloseButton="true">
+                                {this.state.preflight.message}
+                            </InlineNotification>}
+                        {this.state.preflight && this.state.preflight.allowed &&
+                            <p>{this.state.preflight.message}</p>}
+                        {this.state.preflight?.docsRestoreUrl &&
+                            <p><a href={this.state.preflight.docsRestoreUrl} target="_blank" rel="noreferrer">Official restore guide</a> (Camunda {this.state.preflight.camundaMinorVersion})</p>}
+                    </Modal.Body>
+                    <Modal.Footer>
+                        <Button kind="secondary" onClick={() => this.setState({showConfirm: false})}>Cancel</Button>
+                        <Button kind="danger"
+                                disabled={!this.state.preflight?.allowed || this.state.preflightLoading}
+                                onClick={() => this.startRestore()}>
+                            Start restore
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
             </div>
         )
+    }
+
+    renderMonitorCard() {
+        const m = this.state.restoreMonitor;
+        if (!m || m.statusRestore === "READY") {
+            return null;
+        }
+        return (
+            <Card style={{marginTop: "12px", marginBottom: "12px"}}>
+                <Card.Header>Restore progress</Card.Header>
+                <Card.Body>
+                    <p>Status: <Tag type="blue">{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
+                    <p>Step {m.step}/{m.totalNumberOfSteps}: {m.stepName}</p>
+                    {m.docsRestoreUrl &&
+                        <p><a href={m.docsRestoreUrl} target="_blank" rel="noreferrer">Restore documentation</a></p>}
+                    {m.messages && m.messages.slice(-5).map((msg, i) =>
+                        <div key={i} style={{fontSize: "0.85rem"}}>{msg.message}</div>)}
+                </Card.Body>
+            </Card>
+        );
     }
 
     renderStatusTag(row) {
@@ -105,7 +193,7 @@ class Restore extends React.Component {
         const canRestore = row.complete === true && row.backupStatus !== "INPROGRESS";
         if (canRestore) {
             return (
-                <Button size="sm" disabled title="Restore automation is not available in this release">
+                <Button size="sm" onClick={() => this.openConfirm(row)}>
                     Restore
                 </Button>
             );
@@ -120,6 +208,49 @@ class Restore extends React.Component {
                 </span>
             </OverlayTrigger>
         );
+    }
+
+    openConfirm(row) {
+        this.setState({
+            selectedBackup: row,
+            showConfirm: true,
+            preflight: null,
+            preflightLoading: true
+        });
+        RestCallService.getInstance().getJson(
+            'blueberry/api/restore/preflight?backupId=' + row.backupId + '&',
+            this,
+            (httpPayload) => {
+                if (httpPayload.isError()) {
+                    this.setState({preflightLoading: false, preflight: {allowed: false, message: httpPayload.getError()}});
+                } else {
+                    this.setState({preflightLoading: false, preflight: httpPayload.getData()});
+                }
+            });
+    }
+
+    startRestore() {
+        const backupId = this.state.selectedBackup?.backupId;
+        RestCallService.getInstance().postJson(
+            'blueberry/api/restore/start?',
+            {backupId: backupId},
+            this,
+            (httpPayload) => {
+                if (httpPayload.isError()) {
+                    this.setState({status: httpPayload.getError(), showConfirm: false});
+                } else {
+                    this.setState({showConfirm: false, status: ""});
+                    this.monitorRestore();
+                }
+            });
+    }
+
+    monitorRestore() {
+        RestCallService.getInstance().getJson('blueberry/api/restore/monitor?', this, (httpPayload) => {
+            if (!httpPayload.isError()) {
+                this.setState({restoreMonitor: httpPayload.getData()});
+            }
+        });
     }
 
     refreshListBackup() {
