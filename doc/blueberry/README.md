@@ -28,7 +28,20 @@ The application is accessible under localhost:9082
 ## Blueberry user interface
 
 ### Dashboard page
-The dashboard gives you a main overview on the backup.
+The dashboard shows backup status for the cluster.
+
+The **Backup timeline** chart lists each backup ID from the merged backup list.
+The chart uses one bar per backup ID.
+
+The backup card shows these counts:
+
+- Total backups
+- Complete backups (all active components reported the ID)
+- Partial backups (one or more active components did not report the ID)
+- Failed backups
+
+Use **Refresh** to reload dashboard data.
+
 ![Blueberry_Dashboard.png](images/Blueberry_Dashboard.png)
 
 ### Backup page
@@ -47,7 +60,23 @@ If you need to start a backup with a specific ID, simply enter the desired ID an
 
 ### Restore page
 
-In development
+The Restore page lists backups from the same API as the Backup page.
+
+Each row shows backup ID, time, status, and components.
+
+The **Restore** button stays disabled when the backup is partial or incomplete.
+Move the pointer over the button to read the reason.
+
+Full restore automation is not available in this release.
+
+### Camunda version selector
+
+Use the version list in the top bar to select Camunda **8.7**, **8.8**, **8.9**, or **8.10**.
+
+The selection is stored in the browser and sent to the server.
+
+Doc links for backup and restore follow the selected version.
+The default version is **8.7**.
 
 ### Scheduler page
 

@@ -3,6 +3,8 @@ package io.camunda.blueberry.api;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.camunda.blueberry.connect.*;
 import io.camunda.blueberry.operation.OperationLog;
+import io.camunda.blueberry.exception.OperationException;
+import io.camunda.blueberry.operation.backup.BackupCompleteness;
 import io.camunda.blueberry.operation.backup.BackupJob;
 import io.camunda.blueberry.operation.backup.BackupManager;
 import io.camunda.blueberry.platform.ExplorationCluster;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -78,11 +81,19 @@ public class DashboardRestController {
             Boolean exporterStatus = explorationCluster.getExporterStatus();
             status.cluster.statusCluster = Boolean.TRUE.equals(exporterStatus) ? CLUSTER_ACTIF : Boolean.FALSE.equals(exporterStatus) ? CLUSTER_DISABLED : CLUSTER_NOT_CONNECTED;
 
-            List<io.camunda.blueberry.connect.BackupInfo> listBackups = explorationCluster.getListBackup();
-            if (listBackups != null) {
+            try {
+                BackupManager.ListBackupResult merged = backupManager.getListBackups();
+                List<BackupInfo> listBackups = merged.listBackups;
                 status.backup.backupsCount = listBackups.size();
-                status.backup.backupsFailed = (int) listBackups.stream().filter(t -> t.status.equals(BackupInfo.Status.FAILED)).count();
-                status.backup.backupsComplete = (int) listBackups.stream().filter(t -> t.status.equals(BackupInfo.Status.COMPLETED)).count();
+                status.backup.backupsFailed = (int) listBackups.stream()
+                        .filter(t -> BackupInfo.Status.FAILED.equals(t.status)).count();
+                status.backup.backupsPartial = (int) listBackups.stream()
+                        .filter(t -> BackupInfo.Status.PARTIALBACKUP.equals(t.status)).count();
+                List<BackupCompleteness.Detail> completeness = backupManager.getBackupCompletenessDetails();
+                status.backup.backupsComplete = (int) completeness.stream().filter(BackupCompleteness.Detail::complete).count();
+                status.backup.history = buildHistory(listBackups);
+            } catch (OperationException e) {
+                logger.warn("Dashboard backup list unavailable: {}", e.getMessage());
             }
 
             BackupJob backupJob = backupManager.getBackupJob();
@@ -91,8 +102,9 @@ public class DashboardRestController {
                 status.backup.statusBackup = backupJob.getJobStatus().toString();
                 OperationLog operationLog = backupJob.getOperationLog();
                 if (operationLog != null) {
+                    status.backup.step = operationLog.getCurrentStep() + "/" + operationLog.getTotalNumberOfSteps()
+                            + " (" + operationLog.getOperationName() + ")";
                 }
-                status.backup.step = operationLog.getCurrentStep() + "/" + operationLog.getTotalNumberOfSteps() + " (" + operationLog.getOperationName() + ")";
             }
 
 
@@ -140,6 +152,30 @@ public class DashboardRestController {
                 "explanation", connectionInfo.explanations);
     }
 
+    private List<Map<String, Object>> buildHistory(List<BackupInfo> listBackups) {
+        List<Map<String, Object>> history = new ArrayList<>();
+        for (BackupInfo info : listBackups) {
+            Map<String, Object> point = new HashMap<>();
+            point.put("label", "ID " + info.backupId);
+            point.put("value", historyBarValue(info.status));
+            history.add(point);
+        }
+        return history;
+    }
+
+    private static double historyBarValue(BackupInfo.Status status) {
+        if (status == null) {
+            return 0.5;
+        }
+        return switch (status) {
+            case COMPLETED -> 1.0;
+            case PARTIALBACKUP -> 0.7;
+            case IN_PROGRESS -> 0.5;
+            case FAILED -> 0.3;
+            default -> 0.4;
+        };
+    }
+
     private class DashboardStatus {
         @JsonProperty
         DashClusterInfo cluster = new DashClusterInfo();
@@ -164,7 +200,7 @@ public class DashboardRestController {
 
     private class DashBackupInfo {
         @JsonProperty
-        List<String> history = new ArrayList<>();
+        List<Map<String, Object>> history = new ArrayList<>();
         @JsonProperty
         String statusBackup;
         @JsonProperty
@@ -175,6 +211,8 @@ public class DashboardRestController {
         Integer backupsFailed;
         @JsonProperty
         Integer backupsComplete;
+        @JsonProperty
+        Integer backupsPartial;
     }
 
     private class DashSchedulerInfo {

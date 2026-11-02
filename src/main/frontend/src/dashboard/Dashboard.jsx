@@ -152,6 +152,10 @@ class Dashboard extends React.Component {
                                         <td style={{textAlign: "right"}}>{this.state.dashboard.backup.backupsComplete}</td>
                                     </tr>
                                     <tr>
+                                        <td>backup partial</td>
+                                        <td style={{textAlign: "right"}}>{this.state.dashboard.backup.backupsPartial}</td>
+                                    </tr>
+                                    <tr>
                                         <td>backup failed</td>
                                         <td style={{textAlign: "right"}}>{this.state.dashboard.backup.backupsFailed}</td>
                                     </tr>
