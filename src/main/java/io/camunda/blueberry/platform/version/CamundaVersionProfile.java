@@ -24,9 +24,24 @@ public record CamundaVersionProfile(
     }
 
     /**
-     * Ordered restore phases for this Camunda minor (ES path). Kubernetes broker steps stay manual until K8sConnect is live.
+     * Ordered restore phases. Camunda 8.7 follows the PwC runbook and can run when execution is enabled.
+     * Other minors stay manual until a runbook for that version exists.
      */
     public List<RestorePhase> restorePhases() {
+        if ("8.7".equals(minorVersion)) {
+            return List.of(
+                    RestorePhase.automated("preflight", "Validate backup completeness"),
+                    RestorePhase.automated("zeebe_scale_down", "Stop Operate, Tasklist, Optimize, the gateway, and Zeebe"),
+                    RestorePhase.automated("es_templates", "Start components so they create index templates"),
+                    RestorePhase.automated("es_delete_indices", "Delete Camunda indices"),
+                    RestorePhase.automated("es_snapshots", "Restore full Elasticsearch snapshots with no index filter"),
+                    RestorePhase.automated("zeebe_delete_volumes", "Delete Zeebe persistent volume claims"),
+                    RestorePhase.automated("zeebe_broker_restore", "Restore Zeebe brokers with ZEEBE_RESTORE"),
+                    RestorePhase.automated("zeebe_scale_up", "Remove ZEEBE_RESTORE and start the other components"),
+                    RestorePhase.manual("verify", "Confirm Operate, Tasklist, Optimize, and one test process",
+                            "Open each application and start one test process. Do not treat the job log as proof.")
+            );
+        }
         String doc = docsRestoreUrl;
         return List.of(
                 RestorePhase.automated("preflight", "Validate backup completeness"),

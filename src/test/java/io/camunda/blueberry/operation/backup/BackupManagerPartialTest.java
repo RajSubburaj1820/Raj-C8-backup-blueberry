@@ -1,11 +1,16 @@
 package io.camunda.blueberry.operation.backup;
 
+import io.camunda.blueberry.connect.BackupComponentInt;
 import io.camunda.blueberry.connect.BackupInfo;
 import io.camunda.blueberry.connect.CamundaApplicationInt;
+import io.camunda.blueberry.exception.BackupException;
+import io.camunda.blueberry.exception.OperationException;
+import io.camunda.blueberry.operation.OperationLog;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,5 +75,53 @@ class BackupManagerPartialTest {
 
         assertFalse(detail.complete());
         assertTrue(detail.missingComponents().contains("ZEEBERECORD"));
+    }
+
+    @Test
+    void requiredSetOmitsInactiveOptimize() {
+        List<BackupComponentInt> components = List.of(
+                stub(CamundaApplicationInt.COMPONENT.OPERATE, true),
+                stub(CamundaApplicationInt.COMPONENT.OPTIMIZE, false),
+                stub(CamundaApplicationInt.COMPONENT.ZEEBE, true));
+
+        Set<CamundaApplicationInt.COMPONENT> required = BackupCompleteness.requiredActiveComponents(components);
+
+        assertFalse(required.contains(CamundaApplicationInt.COMPONENT.OPTIMIZE));
+        assertEquals(EnumSet.of(CamundaApplicationInt.COMPONENT.OPERATE, CamundaApplicationInt.COMPONENT.ZEEBE),
+                required);
+    }
+
+    private static BackupComponentInt stub(CamundaApplicationInt.COMPONENT component, boolean active) {
+        return new BackupComponentInt() {
+            @Override
+            public boolean isActive() {
+                return active;
+            }
+
+            @Override
+            public CamundaApplicationInt.COMPONENT getComponent() {
+                return component;
+            }
+
+            @Override
+            public BackupOperation backup(Long backupId, OperationLog operationLog) throws BackupException {
+                return null;
+            }
+
+            @Override
+            public BackupOperation waitBackup(Long backupId, OperationLog operationLog) throws BackupException {
+                return null;
+            }
+
+            @Override
+            public List<BackupInfo> getListBackups() throws OperationException {
+                return List.of();
+            }
+
+            @Override
+            public String getUrlListBackup() {
+                return "";
+            }
+        };
     }
 }

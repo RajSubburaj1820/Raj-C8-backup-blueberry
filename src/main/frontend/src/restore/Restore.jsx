@@ -22,6 +22,8 @@ class Restore extends React.Component {
         this.state = {
             listBackups: [],
             phases: [],
+            executionEnabled: false,
+            procedure: "",
             display: {loading: false},
             status: "",
             selectedBackup: null,
@@ -49,7 +51,12 @@ class Restore extends React.Component {
     loadPhases() {
         RestCallService.getInstance().getJson('blueberry/api/restore/phases?', this, (httpPayload) => {
             if (!httpPayload.isError()) {
-                this.setState({phases: httpPayload.getData().phases || []});
+                const data = httpPayload.getData();
+                this.setState({
+                    phases: data.phases || [],
+                    executionEnabled: data.executionEnabled === true,
+                    procedure: data.procedure || ""
+                });
             }
         });
     }
@@ -60,8 +67,10 @@ class Restore extends React.Component {
                 <div className="row" style={{width: "100%"}}>
                     <div className="col-md-10">
                         <h1 className="title">Restore</h1>
-                        <InlineNotification kind="info" hideCloseButton="true" lowContrast="false">
-                            Select a complete backup to start a restore plan. Kubernetes steps are manual until cluster automation is enabled.
+                        <InlineNotification kind="warning" hideCloseButton="true" lowContrast="false">
+                            {this.state.procedure === "pwc-8.7"
+                                ? "Camunda 8.7 restore stops the cluster, deletes Camunda indices, deletes Zeebe volumes, and restores the selected backup. Live restore is off until blueberry.restore.execution is true."
+                                : "Automated restore is available for Camunda 8.7. Select 8.7 to use the PwC restore procedure."}
                         </InlineNotification>
                         {this.state.status &&
                             <InlineNotification kind="error" hideCloseButton="true" lowContrast="false">
@@ -118,6 +127,7 @@ class Restore extends React.Component {
                                 {this.state.phases.map((p) =>
                                     <li key={p.id}>
                                         {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
+                                        {p.kind === "AUTOMATED" && <Tag type="green">Automated</Tag>}
                                     </li>)}
                             </ol>
                         </Card.Body>
@@ -128,7 +138,11 @@ class Restore extends React.Component {
                         <Modal.Title>Confirm restore for backup {this.state.selectedBackup?.backupId}</Modal.Title>
                     </Modal.Header>
                     <Modal.Body>
-                        <p>This action plans a destructive restore. The platform may be unavailable during restore.</p>
+                        <p>This restore deletes Camunda indices and Zeebe volumes. Data written after the backup time is lost. The platform is unavailable during the restore.</p>
+                        {!this.state.executionEnabled &&
+                            <InlineNotification kind="warning" hideCloseButton="true">
+                                Live restore is off. Set blueberry.restore.execution to true before you start.
+                            </InlineNotification>}
                         {this.state.preflightLoading && <p>Checking preflight...</p>}
                         {this.state.preflight && !this.state.preflight.allowed &&
                             <InlineNotification kind="error" hideCloseButton="true">
@@ -142,7 +156,7 @@ class Restore extends React.Component {
                     <Modal.Footer>
                         <Button kind="secondary" onClick={() => this.setState({showConfirm: false})}>Cancel</Button>
                         <Button kind="danger"
-                                disabled={!this.state.preflight?.allowed || this.state.preflightLoading}
+                                disabled={!this.state.preflight?.allowed || this.state.preflightLoading || !this.state.executionEnabled}
                                 onClick={() => this.startRestore()}>
                             Start restore
                         </Button>
@@ -211,6 +225,7 @@ class Restore extends React.Component {
     }
 
     openConfirm(row) {
+        this.loadPhases();
         this.setState({
             selectedBackup: row,
             showConfirm: true,
@@ -236,8 +251,12 @@ class Restore extends React.Component {
             {backupId: backupId},
             this,
             (httpPayload) => {
-                if (httpPayload.isError()) {
-                    this.setState({status: httpPayload.getError(), showConfirm: false});
+                const data = httpPayload.isError() ? {} : (httpPayload.getData() || {});
+                if (httpPayload.isError() || data.error) {
+                    this.setState({
+                        status: data.message || data.errorMessage || httpPayload.getError(),
+                        showConfirm: false
+                    });
                 } else {
                     this.setState({showConfirm: false, status: ""});
                     this.monitorRestore();

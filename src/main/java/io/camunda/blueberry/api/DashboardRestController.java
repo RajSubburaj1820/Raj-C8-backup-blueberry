@@ -80,6 +80,11 @@ public class DashboardRestController {
             }
             Boolean exporterStatus = explorationCluster.getExporterStatus();
             status.cluster.statusCluster = Boolean.TRUE.equals(exporterStatus) ? CLUSTER_ACTIF : Boolean.FALSE.equals(exporterStatus) ? CLUSTER_DISABLED : CLUSTER_NOT_CONNECTED;
+            status.cluster.statusLabel = Boolean.TRUE.equals(exporterStatus)
+                    ? "Exporters enabled"
+                    : Boolean.FALSE.equals(exporterStatus)
+                    ? "Exporters disabled"
+                    : "Exporter status unknown";
 
             try {
                 BackupManager.ListBackupResult merged = backupManager.getListBackups();
@@ -91,7 +96,8 @@ public class DashboardRestController {
                         .filter(t -> BackupInfo.Status.PARTIALBACKUP.equals(t.status)).count();
                 List<BackupCompleteness.Detail> completeness = backupManager.getBackupCompletenessDetails();
                 status.backup.backupsComplete = (int) completeness.stream().filter(BackupCompleteness.Detail::complete).count();
-                status.backup.history = buildHistory(listBackups);
+                status.backup.history = DashboardBackupViewHelper.buildHistory(listBackups);
+                status.backup.latest = DashboardBackupViewHelper.latestBackupSummary(listBackups);
             } catch (OperationException e) {
                 logger.warn("Dashboard backup list unavailable: {}", e.getMessage());
             }
@@ -105,6 +111,9 @@ public class DashboardRestController {
                     status.backup.step = operationLog.getCurrentStep() + "/" + operationLog.getTotalNumberOfSteps()
                             + " (" + operationLog.getOperationName() + ")";
                 }
+            }
+            if (backupJob != null && backupJob.getJobStatus() == BackupJob.JOBSTATUS.INPROGRESS) {
+                status.backup.inProgressBackupId = backupJob.getBackupId();
             }
 
 
@@ -152,30 +161,6 @@ public class DashboardRestController {
                 "explanation", connectionInfo.explanations);
     }
 
-    private List<Map<String, Object>> buildHistory(List<BackupInfo> listBackups) {
-        List<Map<String, Object>> history = new ArrayList<>();
-        for (BackupInfo info : listBackups) {
-            Map<String, Object> point = new HashMap<>();
-            point.put("label", "ID " + info.backupId);
-            point.put("value", historyBarValue(info.status));
-            history.add(point);
-        }
-        return history;
-    }
-
-    private static double historyBarValue(BackupInfo.Status status) {
-        if (status == null) {
-            return 0.5;
-        }
-        return switch (status) {
-            case COMPLETED -> 1.0;
-            case PARTIALBACKUP -> 0.7;
-            case IN_PROGRESS -> 0.5;
-            case FAILED -> 0.3;
-            default -> 0.4;
-        };
-    }
-
     private class DashboardStatus {
         @JsonProperty
         DashClusterInfo cluster = new DashClusterInfo();
@@ -195,16 +180,22 @@ public class DashboardRestController {
         @JsonProperty
         Integer clusterSize;
         @JsonProperty
-        String statusCluster; // "ACTIVE"
+        String statusCluster; // ACTIF | DISABLED | NOT_CONNECTED (exporter-derived)
+        @JsonProperty
+        String statusLabel;
     }
 
     private class DashBackupInfo {
         @JsonProperty
         List<Map<String, Object>> history = new ArrayList<>();
         @JsonProperty
+        Map<String, Object> latest = new HashMap<>();
+        @JsonProperty
         String statusBackup;
         @JsonProperty
         String step;
+        @JsonProperty
+        Long inProgressBackupId;
         @JsonProperty
         Integer backupsCount;
         @JsonProperty

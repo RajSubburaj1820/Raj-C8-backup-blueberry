@@ -5,6 +5,7 @@ import io.camunda.blueberry.exception.OperationException;
 import io.camunda.blueberry.operation.OperationLog;
 import io.camunda.blueberry.operation.restoration.RestorationJob;
 import io.camunda.blueberry.operation.restoration.RestorationManager;
+import io.camunda.blueberry.operation.restoration.RestoreEnvironmentCheck;
 import io.camunda.blueberry.operation.restoration.RestorePreflight;
 import io.camunda.blueberry.platform.version.RestorePhase;
 import org.slf4j.Logger;
@@ -21,10 +22,18 @@ import java.util.stream.Collectors;
 public class RestoreRestController {
 
     private final RestorationManager restorationManager;
+    private final RestoreEnvironmentCheck restoreEnvironmentCheck;
     Logger logger = LoggerFactory.getLogger(RestoreRestController.class);
 
-    public RestoreRestController(RestorationManager restorationManager) {
+    public RestoreRestController(RestorationManager restorationManager,
+                                 RestoreEnvironmentCheck restoreEnvironmentCheck) {
         this.restorationManager = restorationManager;
+        this.restoreEnvironmentCheck = restoreEnvironmentCheck;
+    }
+
+    @GetMapping(value = "/api/restore/readiness", produces = "application/json")
+    public Map<String, Object> readiness() {
+        return restoreEnvironmentCheck.readiness();
     }
 
     @GetMapping(value = "/api/restore/phases", produces = "application/json")
@@ -32,7 +41,12 @@ public class RestoreRestController {
         List<Map<String, Object>> phaseMaps = restorationManager.phasesForActiveVersion().stream()
                 .map(this::phaseToMap)
                 .collect(Collectors.toList());
-        return Map.of("phases", phaseMaps);
+        boolean pwc87 = phaseMaps.stream().anyMatch(phase -> "zeebe_delete_volumes".equals(phase.get("id")));
+        Map<String, Object> result = new HashMap<>();
+        result.put("phases", phaseMaps);
+        result.put("executionEnabled", restorationManager.isLiveRestoreEnabled());
+        result.put("procedure", pwc87 ? "pwc-8.7" : "manual");
+        return result;
     }
 
     @GetMapping(value = "/api/restore/preflight", produces = "application/json")

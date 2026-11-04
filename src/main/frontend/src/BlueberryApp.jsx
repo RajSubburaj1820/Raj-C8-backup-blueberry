@@ -105,7 +105,7 @@ class BlueberryApp extends React.Component {
             <Nav className="mr-auto">
               <Navbar.Brand href="#home">
                 <img src="/img/blueberry.png" width="28" height="28" alt="Blueberry"/>
-                &nbsp;Blueberry Backup <span style={{fontSize: "0.7rem"}}>v1.3.0</span>
+                &nbsp;Blueberry Backup <span style={{fontSize: "0.7rem"}}>v1.4.0</span>
               </Navbar.Brand>
 
               <Nav.Link onClick={() => {

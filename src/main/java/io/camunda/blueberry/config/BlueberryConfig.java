@@ -31,9 +31,23 @@ public class BlueberryConfig {
     @Value("${blueberry.namespace:camunda}")
     private String namespace;
 
-
     @Value("${blueberry.kubeConfig:}")
     private String kubeConfig;
+
+    @Value("${blueberry.restore.execution:false}")
+    private boolean restoreExecution;
+
+    @Value("${blueberry.restore.helmRelease:camunda87helm}")
+    private String restoreHelmRelease;
+
+    @Value("${blueberry.restore.elasticsearchRepository:}")
+    private String restoreElasticsearchRepository;
+
+    @Value("${blueberry.restore.podDeleteTimeoutSeconds:300}")
+    private int restorePodDeleteTimeoutSeconds;
+
+    @Value("${blueberry.restore.zeebeRestoreTimeoutSeconds:1800}")
+    private int restoreZeebeTimeoutSeconds;
 
 
     /**
@@ -119,6 +133,26 @@ public class BlueberryConfig {
 
     public String getNamespace() {
         return namespace;
+    }
+
+    public boolean isRestoreExecutionEnabled() {
+        return restoreExecution;
+    }
+
+    public String getRestoreHelmRelease() {
+        return restoreHelmRelease;
+    }
+
+    public String getRestoreElasticsearchRepository() {
+        return restoreElasticsearchRepository;
+    }
+
+    public int getRestorePodDeleteTimeoutSeconds() {
+        return restorePodDeleteTimeoutSeconds;
+    }
+
+    public int getRestoreZeebeTimeoutSeconds() {
+        return restoreZeebeTimeoutSeconds;
     }
 
     public String getAzureContainerName() {
