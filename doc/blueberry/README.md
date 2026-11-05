@@ -105,6 +105,23 @@ For Camunda **8.7**, Start restore follows the PwC 8.7 runbook:
 Live restore stays off until `blueberry.restore.execution` is `true`.
 Restore uses the **Kubernetes API** (Fabric8) and **Elasticsearch HTTP** — not shell scripts or simulated steps.
 Set `blueberry.kubeConfig` when Blueberry runs outside the cluster.
+
+If your kubeconfig includes **GKE** (`gke-gcloud-auth-plugin`) and **local** clusters (kind, Docker Desktop),
+set `blueberry.kubeContext` to the cluster you want (for example `kind-camunda-platform-local`). Blueberry uses
+that context instead of whatever is selected in `kubectl config current-context`.
+
+On startup, Fabric8 may log `Error unmarshalling ExecCredential` when the GKE plugin returns non-JSON output
+(expired `gcloud` login, plugin not on `PATH` for the JVM, or wrong context). That is usually a **WARN**, not a
+crash. Fix GKE auth with:
+
+```shell
+gcloud auth login
+gcloud container clusters get-credentials YOUR_CLUSTER --region YOUR_REGION
+kubectl get nodes
+which gke-gcloud-auth-plugin
+```
+
+Ensure the same `PATH` is visible to the process that starts Blueberry (IDE run configuration or terminal).
 Check `GET /blueberry/api/restore/readiness` before you start.
 The Helm release default is `camunda87helm` in namespace `camunda`.
 The Elasticsearch repository default is `camunda-backups`.

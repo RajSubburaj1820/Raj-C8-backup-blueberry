@@ -34,6 +34,10 @@ public class BlueberryConfig {
     @Value("${blueberry.kubeConfig:}")
     private String kubeConfig;
 
+    /** Optional kubectl context name (e.g. kind-camunda-platform-local). Uses ~/.kube/config when kubeConfig is unset. */
+    @Value("${blueberry.kubeContext:}")
+    private String kubeContext;
+
     @Value("${blueberry.restore.execution:false}")
     private boolean restoreExecution;
 
@@ -189,6 +193,10 @@ public class BlueberryConfig {
 
     public String getKubeConfig() {
         return kubeConfig == null || kubeConfig.trim().isEmpty() ? null : kubeConfig;
+    }
+
+    public String getKubeContext() {
+        return kubeContext == null || kubeContext.trim().isEmpty() ? null : kubeContext.trim();
     }
 
     public String getOperateRepository() {

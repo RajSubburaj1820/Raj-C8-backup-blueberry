@@ -8,6 +8,8 @@ blueberry:
   namespace: camunda
   # Path to kubeconfig when Blueberry runs outside the cluster (for restore and K8s exploration).
   # kubeConfig: /Users/you/.kube/config
+  # kubectl context when ~/.kube/config has several clusters (e.g. GKE + kind). Avoids GKE exec auth for local dev.
+  # kubeContext: kind-camunda-platform-local
 
   # PwC Camunda 8.7 restore. execution stays false until you intend to delete indices and Zeebe volumes.
   restore:
