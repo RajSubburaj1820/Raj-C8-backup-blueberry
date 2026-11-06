@@ -8,6 +8,7 @@
 
 import React from 'react';
 import RestCallService from "../services/RestCallService";
+import BackupListTable from "../component/BackupListTable";
 import {Button, InlineNotification, Tag} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
@@ -90,34 +91,8 @@ class Restore extends React.Component {
 
                 {this.renderMonitorCard()}
 
-                <table id="runnersTable" className="table is-hoverable is-fullwidth">
-                    <thead>
-                    <tr>
-                        <th>Backup ID</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Components</th>
-                        <th>Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {this.state.listBackups ? this.state.listBackups.map((row) =>
-                        <tr key={row.backupId}>
-                            <td>{row.backupId}</td>
-                            <td>{row.backupTime}</td>
-                            <td>{this.renderStatusTag(row)}</td>
-                            <td>
-                                {row.presentComponents && row.presentComponents.map((c, i) =>
-                                    <Tag key={i} type="blue">{c}</Tag>)}
-                                {row.missingComponents && row.missingComponents.length > 0 &&
-                                    row.missingComponents.map((c, i) =>
-                                        <Tag key={"m" + i} type="red">missing {c}</Tag>)}
-                            </td>
-                            <td>{this.renderRestoreButton(row)}</td>
-                        </tr>
-                    ) : null}
-                    </tbody>
-                </table>
+                <BackupListTable rows={this.state.listBackups}
+                                 renderAction={(row) => this.renderRestoreButton(row)}/>
 
                 {this.state.phases.length > 0 &&
                     <Card style={{marginTop: "16px"}}>
@@ -184,23 +159,6 @@ class Restore extends React.Component {
                 </Card.Body>
             </Card>
         );
-    }
-
-    renderStatusTag(row) {
-        const status = row.backupStatus;
-        if (status === "PARTIALBACKUP" || row.complete === false) {
-            return <Tag type="red">Partial</Tag>;
-        }
-        if (status === "COMPLETED" || row.complete === true) {
-            return <Tag type="green">Complete</Tag>;
-        }
-        if (status === "INPROGRESS") {
-            return <Tag type="blue">In progress</Tag>;
-        }
-        if (status === "FAILED") {
-            return <Tag type="red">Failed</Tag>;
-        }
-        return <Tag type="gray">{status || "Unknown"}</Tag>;
     }
 
     renderRestoreButton(row) {
