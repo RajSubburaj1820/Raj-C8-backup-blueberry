@@ -41,14 +41,14 @@ blueberry:
 
     # Define the container used by Zeebe and by ElasticSearch
   container:
-    containerType: azure
+    containerType: gcs
     azure:
       containerName: "YourAzureContainerName"
     s3:
-      bucketName: "YourS3Bucket"
+      bucket: "YourS3Bucket"
       region: "us-east-2"
     gcs:
-      bucketName: "YourS3Bucket"
+      bucket: "pym-pc8backup-20250411"
       basePath: "zeebecontainer"
       region: "us-east-2"
 

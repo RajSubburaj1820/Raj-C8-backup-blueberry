@@ -159,6 +159,21 @@ public class BlueberryConfig {
         return azureContainerName;
     }
 
+    /**
+     * The container name (bucket for GCS and S3, container for Azure) of the configured container type
+     *
+     * @return the name used by the repository, empty if the type is unknown
+     */
+    public String getContainerName() {
+        String type = containerType == null ? "" : containerType.trim().toLowerCase();
+        return switch (type) {
+            case "gcs" -> gcsBucket;
+            case "s3" -> s3Bucket;
+            case "azure" -> azureContainerName;
+            default -> "";
+        };
+    }
+
     public String getAzureBasePath() {
         return azureBasePath;
     }

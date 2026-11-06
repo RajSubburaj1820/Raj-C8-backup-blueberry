@@ -54,7 +54,8 @@ public class ConfigurationRestController {
                                             return Map.of(
                                                     "action", tuple.action(),
                                                     "actionStatus", tuple.actionStatus().toString(),
-                                                    "command", tuple.command() == null ? "" : tuple.command()
+                                                    "command", tuple.command() == null ? "" : tuple.command(),
+                                                    "error", tuple.error() == null ? "" : tuple.error()
                                             );
                                         })
                                         .toList());
@@ -90,7 +91,8 @@ public class ConfigurationRestController {
                                             return Map.of(
                                                     "action", tuple.action(),
                                                     "actionStatus", tuple.actionStatus().toString(),
-                                                    "command", tuple.command() == null ? "" : tuple.command()
+                                                    "command", tuple.command() == null ? "" : tuple.command(),
+                                                    "error", tuple.error() == null ? "" : tuple.error()
                                             );
                                         })
                                         .toList());

@@ -228,7 +228,7 @@ operate:
     - name: CAMUNDA_OPERATE_BACKUP_REPOSITORY_NAME
       value: "operaterepository"
     - name: management.endpoints.web.exposure.include
-      value: health, prometheus, loggers, usage-metrics, backup, env
+      value: health, prometheus, loggers, usage-metrics, backups, env
     - name: management.endpoint.env.show.values
       value: ALWAYS
       
@@ -237,7 +237,7 @@ tasklist:
     - name: CAMUNDA_TASKLIST_BACKUP_REPOSITORY_NAME
       value: "tasklistrepository"
     - name: management.endpoints.web.exposure.include
-      value: health, prometheus, loggers, usage-metrics, backup, env
+      value: health, prometheus, loggers, usage-metrics, backups, env
     - name: management.endpoint.env.show.values
       value: ALWAYS
 
@@ -250,7 +250,7 @@ zeebe:
     - name: ZEEBE_BROKER_DATA_BACKUP_STORE
       value: "GCS"
     - name: management.endpoints.web.exposure.include
-      value: health, prometheus, loggers, usage-metrics, backup, env
+      value: health, prometheus, loggers, usage-metrics, backups, env
     - name: management.endpoint.env.show.values
       value: ALWAYS
 ````

@@ -103,7 +103,7 @@ public class RuleZeebeRecordRepository implements Rule {
                 }
                 ruleInfo.addVerifications("Check Elasticsearch repository [" + blueberryConfig.getZeebeRecordRepository()
                                 + "] ContainerType[" + blueberryConfig.getZeebeContainerType()
-                                + "] ContainerName[" + blueberryConfig.getAzureContainerName()
+                                + "] ContainerName[" + blueberryConfig.getContainerName()
                                 + "] basePath[" + blueberryConfig.getZeebeRecordContainerBasePath() + "]",
                         operationResult.success ? RuleStatus.CORRECT : RuleStatus.FAILED,
                         operationResult.command);

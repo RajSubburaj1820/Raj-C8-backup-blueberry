@@ -119,24 +119,34 @@ class Configuration extends React.Component {
                                         </thead>
                                         <tbody>
                                         {content.verifications.map((verification, index) => (
-                                            <tr key={index} className="border">
-                                                <td className="border p-2">
-                                                    {verification.action}&nbsp;&nbsp;
-                                                    {verification.command &&
-                                                        <OverlayTrigger
-                                                            placement="top"
-                                                            overlay={<Tooltip id="tooltip">{verification.command}</Tooltip>}
-                                                        >
-                                                      <span className="d-inline-block">
-                                                        <Terminal size={20} className="text-muted"/>
-                                                      </span>
-                                                        </OverlayTrigger>
-                                                    }
-                                                </td>
-                                                <td className="border p-2">
-                                                    {this.renderConnectionTag(verification.actionStatus)}
-                                                </td>
-                                            </tr>
+                                            <React.Fragment key={index}>
+                                                <tr className="border">
+                                                    <td className="border p-2">
+                                                        {verification.action}&nbsp;&nbsp;
+                                                        {verification.command &&
+                                                            <OverlayTrigger
+                                                                placement="top"
+                                                                overlay={<Tooltip id="tooltip">{verification.command}</Tooltip>}
+                                                            >
+                                                          <span className="d-inline-block">
+                                                            <Terminal size={20} className="text-muted"/>
+                                                          </span>
+                                                            </OverlayTrigger>
+                                                        }
+                                                    </td>
+                                                    <td className="border p-2">
+                                                        {this.renderConnectionTag(verification.actionStatus)}
+                                                    </td>
+                                                </tr>
+                                                {verification.error &&
+                                                    <tr className="border">
+                                                        <td colSpan="2" className="border p-2 text-danger"
+                                                            style={{whiteSpace: "pre-wrap"}}>
+                                                            {verification.error}
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </React.Fragment>
                                         ))}
                                         </tbody>
                                     </table>

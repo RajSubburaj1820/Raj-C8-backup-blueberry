@@ -108,11 +108,21 @@ public interface Rule {
             this.listVerifications.add(new Tuple(action, actionStatus, command));
         }
 
+        /**
+         * Same as addVerifications, with an error message shown under the action
+         */
+        public void addVerificationsWithError(String action, RuleStatus actionStatus, String command, String error) {
+            this.listVerifications.add(new Tuple(action, actionStatus, command, error));
+        }
+
         public Rule getRule() {
             return this.rule;
         }
 
-        public record Tuple(String action, RuleStatus actionStatus, String command) {
+        public record Tuple(String action, RuleStatus actionStatus, String command, String error) {
+            public Tuple(String action, RuleStatus actionStatus, String command) {
+                this(action, actionStatus, command, null);
+            }
         }
     }
 }

@@ -138,7 +138,7 @@ public class RuleOperateRepository implements Rule {
             }
             ruleInfo.addVerifications("Check Elasticsearch repository [" + operateRepository
                             + "] ContainerType[" + blueberryConfig.getZeebeContainerType()
-                            + "] ContainerName[" + blueberryConfig.getAzureContainerName()
+                            + "] ContainerName[" + blueberryConfig.getContainerName()
                             + "] basePath[" + blueberryConfig.getOperateContainerBasePath() + "]",
                     operationResult.success ? RuleStatus.CORRECT : RuleStatus.FAILED,
                     operationResult.command);
