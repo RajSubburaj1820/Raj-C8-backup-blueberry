@@ -110,6 +110,16 @@ For Camunda **8.7**, Start restore follows the PwC 8.7 runbook:
 7. Restore each snapshot for that backup ID. The request has no index filter.
 8. Delete Zeebe persistent volume claims.
 9. Set `ZEEBE_RESTORE=true` and `ZEEBE_RESTORE_FROM_BACKUP_ID` on the Zeebe StatefulSet, then scale the brokers up.
+   With `ZEEBE_RESTORE=true`, the main container of each broker runs the restore, then exits: Kubernetes starts it again, the restore
+   finds a data directory which is not empty, and aborts, again and again, until the variable is removed (step 10).
+   The log of the first run is lost after a restart, so Blueberry watches every broker at the same time (one thread per broker, current
+   and previous run of the container) and accepts one of two messages. The log of the restore tells which one it detected:
+   * `Successfully restored broker from backup`: the restore was seen.
+   * `... is not empty. Aborting restore to avoid overwriting data`: the container restarted after a first restore, which wrote the
+     data. The restore of this broker is considered successful.
+
+   If a broker logs none of them in the time allowed (`blueberry.restore.zeebeRestoreTimeoutSeconds`), the restore stops with the list of
+   the brokers not detected.
 10. Remove those variables, start the other components, and restart Zeebe.
 
 The restore must then be validated manually: open Operate, Tasklist and Optimize, check the data from the backup time, and start one test process.

@@ -213,7 +213,8 @@ class Pwc87RestoreExecutorTest {
 
     private static final class FakeKubernetes implements KubernetesWorkload {
         private final Map<String, Integer> replicas = new LinkedHashMap<>();
-        private final List<String> actions = new ArrayList<>();
+        // The brokers are checked by several threads
+        private final List<String> actions = java.util.Collections.synchronizedList(new ArrayList<>());
 
         void present(WorkloadRef workload, int replicaCount) {
             replicas.put(key(workload), replicaCount);

@@ -146,29 +146,52 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
 
     @Override
     public void waitForPodLog(String podName, String expectedText, int timeoutSeconds) throws OperationException {
+        waitForPodLogAny(podName, List.of(expectedText), timeoutSeconds);
+    }
+
+    /**
+     * The restore of Zeebe runs in the main container, then the container exits and Kubernetes starts it again.
+     * The log of the first run is lost after a restart: look at the current run and at the previous one.
+     */
+    @Override
+    public String waitForPodLogAny(String podName, List<String> expectedTexts, int timeoutSeconds) throws OperationException {
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         while (System.currentTimeMillis() < deadline) {
-            try {
-                String logs = client().pods().inNamespace(namespace()).withName(podName).getLog();
-                if (logs != null && logs.contains(expectedText)) {
-                    return;
+            for (String logs : readLogs(podName)) {
+                for (String expectedText : expectedTexts) {
+                    if (logs.contains(expectedText)) {
+                        return expectedText;
+                    }
                 }
-            } catch (Exception ignored) {
-                // The broker may still be starting or crash-looping. The runbook treats that as normal.
-            }
-            // The restore of Zeebe runs, then the container exits and is started again: the log of the container that ran
-            // the restore is only in the previous instance. Without it, a success is never seen.
-            try {
-                String previousLogs = client().pods().inNamespace(namespace()).withName(podName).terminated().getLog();
-                if (previousLogs != null && previousLogs.contains(expectedText)) {
-                    return;
-                }
-            } catch (Exception ignored) {
-                // No previous instance yet
             }
             sleep();
         }
-        throw kube("Pod " + podName + " did not log \"" + expectedText + "\".");
+        throw kube("Pod " + podName + " did not log any of " + expectedTexts + ".");
+    }
+
+    /**
+     * The log of the current run of the container, then the log of the previous run. A log that can't be read is ignored:
+     * the broker may be starting, or crash-looping, this is normal.
+     */
+    private List<String> readLogs(String podName) {
+        List<String> logs = new ArrayList<>();
+        try {
+            String current = client().pods().inNamespace(namespace()).withName(podName).getLog();
+            if (current != null) {
+                logs.add(current);
+            }
+        } catch (Exception ignored) {
+            // Container not started
+        }
+        try {
+            String previous = client().pods().inNamespace(namespace()).withName(podName).terminated().getLog();
+            if (previous != null) {
+                logs.add(previous);
+            }
+        } catch (Exception ignored) {
+            // No previous run yet
+        }
+        return logs;
     }
 
     private int readyReplicas(WorkloadRef workload) throws OperationException {
