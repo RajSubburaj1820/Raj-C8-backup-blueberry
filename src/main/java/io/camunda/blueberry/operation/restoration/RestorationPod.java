@@ -18,7 +18,6 @@ public final class RestorationPod {
                                int replicas,
                                long backupId,
                                OperationLog log) throws OperationException {
-        log.info(null, "Charts before 12.1.0 ignore ZEEBE_RESTORE. This step expects Helm chart 12.1.0 or later.");
         kubernetes.setStatefulSetEnv(layout.zeebe().name(), "ZEEBE_RESTORE", "true");
         kubernetes.setStatefulSetEnv(layout.zeebe().name(), "ZEEBE_RESTORE_FROM_BACKUP_ID", Long.toString(backupId));
         kubernetes.scale(layout.zeebe(), replicas);

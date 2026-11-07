@@ -10,6 +10,7 @@ import React from 'react';
 import RestCallService from "../services/RestCallService";
 import ControllerPage from "../component/ControllerPage";
 import BackupListTable from "../component/BackupListTable";
+import RepositoryTable from "../component/RepositoryTable";
 
 import {Button, Checkbox, InlineNotification, Tag, TextInput} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
@@ -158,6 +159,10 @@ class Backup extends React.Component {
                                     <tr>
                                         <td>Date status</td>
                                         <td>{this.state.currentBackup.dateStatus}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{verticalAlign: "top"}}>Repository</td>
+                                        <td><RepositoryTable/></td>
                                     </tr>
                                 </table>
 

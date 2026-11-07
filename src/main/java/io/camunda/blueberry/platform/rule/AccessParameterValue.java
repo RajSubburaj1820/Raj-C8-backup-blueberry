@@ -56,16 +56,26 @@ public class AccessParameterValue {
             actuator = Collections.emptyMap();
             throw CommunicationException.getInstanceFromComponent(component, e);
         }
+        // The /actuator/env of the component answered
+        resultParameter.envReachable = true;
         // access configuration
         Map<String, Object> configuration = accessConfiguration();
 
         for (String parameter : listParameters) {
             String keyInActuator = dictionary.get(parameter);
             if (keyInActuator != null && actuator.containsKey(keyInActuator)) {
-                resultParameter.parameters.put(parameter, actuator.get(keyInActuator));
-                resultParameter.accessActuator = true;
+                Object value = actuator.get(keyInActuator);
+                if (MASKED_VALUE.equals(value)) {
+                    // The component hides the values (management.endpoint.env.show-values): the value is not usable
+                    resultParameter.masked = true;
+                    resultParameter.parameters.put(parameter, configuration.get(parameter));
+                } else {
+                    resultParameter.parameters.put(parameter, value);
+                    resultParameter.accessActuator = true;
+                }
             } else {
-                resultParameter.parameters.put(parameter, configuration.containsKey(parameter));
+                // The value of the blueberry configuration
+                resultParameter.parameters.put(parameter, configuration.get(parameter));
             }
 
             logger.debug("Access actuator parameter [{}]=>Key [{}] Exist? {} value[{}] : ", parameter,
@@ -100,15 +110,34 @@ public class AccessParameterValue {
                 if (propertySource.get("name").equals("systemEnvironment")) {
                     Map<String, Object> properties = (Map<String, Object>) propertySource.get("properties");
                     Map<String, Object> propertie = (Map<String, Object>) properties.get(param);
-                    result.put(param, propertie.get("value"));
+                    // The variable may not exist in the environment of the component
+                    if (propertie != null) {
+                        result.put(param, propertie.get("value"));
+                    }
                 }
             }
         }
         return result;
     }
 
+    /**
+     * Value given by the actuator when the values of /env are hidden
+     */
+    public static final String MASKED_VALUE = "******";
+
     public static class ResultParameter {
+        /**
+         * True when the value was read in the /env of the component
+         */
         public boolean accessActuator;
+        /**
+         * True when /env of the component answered, even if the value was not found or hidden
+         */
+        public boolean envReachable;
+        /**
+         * True when /env answered, but the component hides the value (******). Set management.endpoint.env.show-values=ALWAYS
+         */
+        public boolean masked;
         public String info;
         public Map<String, Object> parameters = new HashMap<>();
     }

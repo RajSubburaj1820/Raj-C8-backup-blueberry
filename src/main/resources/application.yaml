@@ -13,7 +13,6 @@ blueberry:
   restore:
     execution: false
     helmRelease: camunda87helm
-    elasticsearchRepository: camunda-backups
     podDeleteTimeoutSeconds: 300
     zeebeRestoreTimeoutSeconds: 1800
 

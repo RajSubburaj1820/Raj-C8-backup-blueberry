@@ -40,9 +40,6 @@ public class BlueberryConfig {
     @Value("${blueberry.restore.helmRelease:camunda87helm}")
     private String restoreHelmRelease;
 
-    @Value("${blueberry.restore.elasticsearchRepository:}")
-    private String restoreElasticsearchRepository;
-
     @Value("${blueberry.restore.podDeleteTimeoutSeconds:300}")
     private int restorePodDeleteTimeoutSeconds;
 
@@ -141,10 +138,6 @@ public class BlueberryConfig {
 
     public String getRestoreHelmRelease() {
         return restoreHelmRelease;
-    }
-
-    public String getRestoreElasticsearchRepository() {
-        return restoreElasticsearchRepository;
     }
 
     public int getRestorePodDeleteTimeoutSeconds() {

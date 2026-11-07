@@ -9,6 +9,7 @@
 import React from 'react';
 import RestCallService from "../services/RestCallService";
 import BackupListTable from "../component/BackupListTable";
+import RepositoryTable from "../component/RepositoryTable";
 import {Button, InlineNotification, Tag} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
@@ -98,13 +99,17 @@ class Restore extends React.Component {
                     <Card style={{marginTop: "16px"}}>
                         <Card.Header>Restore phases (Camunda version profile)</Card.Header>
                         <Card.Body>
-                            <ol>
-                                {this.state.phases.map((p) =>
+                            <ul style={{listStyle: "none", paddingLeft: 0}}>
+                                {this.state.phases.map((p, index) =>
                                     <li key={p.id}>
-                                        {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
-                                        {p.kind === "AUTOMATED" && <Tag type="green">Automated</Tag>}
+                                        &bull; {index + 1}. {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
                                     </li>)}
-                            </ol>
+                            </ul>
+                            <p className="text-muted" style={{marginTop: "8px"}}>
+                                The restore must be validated manually: open Operate, Tasklist and Optimize,
+                                check the data from the backup time, and start one test process.
+                                Do not treat the job log as proof.
+                            </p>
                         </Card.Body>
                     </Card>}
 
@@ -152,6 +157,8 @@ class Restore extends React.Component {
                 <Card.Body>
                     <p>Status: <Tag type="blue">{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
                     <p>Step {m.step}/{m.totalNumberOfSteps}: {m.stepName}</p>
+                    <p style={{marginBottom: "4px"}}>Repositories used by the restore (the ones of the backup):</p>
+                    <RepositoryTable/>
                     {m.docsRestoreUrl &&
                         <p><a href={m.docsRestoreUrl} target="_blank" rel="noreferrer">Restore documentation</a></p>}
                     {m.messages && m.messages.slice(-5).map((msg, i) =>

@@ -2,6 +2,7 @@ package io.camunda.blueberry.api;
 
 
 import io.camunda.blueberry.platform.PlatformManager;
+import io.camunda.blueberry.platform.RepositoryInformation;
 import io.camunda.blueberry.platform.rule.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,21 @@ public class ConfigurationRestController {
 
     @Autowired
     private PlatformManager platformManager;
+
+    @Autowired
+    private RepositoryInformation repositoryInformation;
+
+    /**
+     * The Elasticsearch repositories of the components: the name of the component, the value in the configuration
+     * of blueberry (the one used by the backup and the restore), and the value read in the cluster.
+     * An empty "cluster" means that the component does not expose the "env" of its actuator.
+     *
+     * @return for example [{"name": "operate", "configuration": "operaterepository", "cluster": ""}]
+     */
+    @GetMapping(value = "/api/configuration/repositories", produces = "application/json")
+    public List<RepositoryInformation.Repository> repositories() {
+        return repositoryInformation.list();
+    }
 
     /**
      * Check the system

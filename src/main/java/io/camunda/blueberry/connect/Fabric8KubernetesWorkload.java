@@ -156,6 +156,16 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
             } catch (Exception ignored) {
                 // The broker may still be starting or crash-looping. The runbook treats that as normal.
             }
+            // The restore of Zeebe runs, then the container exits and is started again: the log of the container that ran
+            // the restore is only in the previous instance. Without it, a success is never seen.
+            try {
+                String previousLogs = client().pods().inNamespace(namespace()).withName(podName).terminated().getLog();
+                if (previousLogs != null && previousLogs.contains(expectedText)) {
+                    return;
+                }
+            } catch (Exception ignored) {
+                // No previous instance yet
+            }
             sleep();
         }
         throw kube("Pod " + podName + " did not log \"" + expectedText + "\".");

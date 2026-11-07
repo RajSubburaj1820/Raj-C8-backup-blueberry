@@ -73,20 +73,40 @@ public class HttpElasticsearchRestore implements ElasticsearchRestoreApi {
     }
 
     @Override
+    public String baseUrl() {
+        return blueberryConfig.getElasticsearchUrl();
+    }
+
+    /**
+     * Names of all the templates. Two kinds exist in Elasticsearch, and Camunda uses both:
+     * <ul>
+     *   <li>composable templates (_index_template): Zeebe, Operate, Tasklist</li>
+     *   <li>legacy templates (_template): Optimize, for example optimize-variable-update-instance_v2</li>
+     * </ul>
+     */
+    @Override
     public List<String> listIndexTemplateNames() throws OperationException {
+        List<String> names = new ArrayList<>();
         String body = get(blueberryConfig.getElasticsearchUrl() + "/_index_template");
         try {
             JsonNode templates = objectMapper.readTree(body).path("index_templates");
-            List<String> names = new ArrayList<>();
             if (templates.isArray()) {
                 for (JsonNode template : templates) {
                     names.add(template.path("name").asText());
                 }
             }
-            return names;
         } catch (Exception e) {
             throw esError("Cannot read index templates. " + e.getMessage());
         }
+
+        // Legacy templates: the answer is an object, the keys are the names of the templates
+        try {
+            String legacyBody = get(blueberryConfig.getElasticsearchUrl() + "/_template");
+            objectMapper.readTree(legacyBody).fieldNames().forEachRemaining(names::add);
+        } catch (Exception e) {
+            // Not fatal: a cluster may not support the legacy templates API
+        }
+        return names;
     }
 
     private String get(String url) throws OperationException {
@@ -100,7 +120,7 @@ public class HttpElasticsearchRestore implements ElasticsearchRestoreApi {
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw esError("Elasticsearch " + method + " " + url + " returned " + response.getStatusCode().value());
             }
-            if (body.contains("\"error\"")) {
+            if (hasTopLevelError(body)) {
                 throw esError("Elasticsearch " + method + " " + url + " failed: " + trim(body));
             }
             return body;
@@ -108,6 +128,23 @@ public class HttpElasticsearchRestore implements ElasticsearchRestoreApi {
             throw e;
         } catch (RestClientException e) {
             throw esError("Elasticsearch " + method + " " + url + " failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * An Elasticsearch error is a JSON object with an "error" key at the top level.
+     * Do not search the word "error" in the whole body: a valid answer can contain it, for example
+     * a template with a field named "error" (Kibana reporting).
+     */
+    private boolean hasTopLevelError(String body) {
+        if (body == null || body.isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            return root.isObject() && root.has("error");
+        } catch (Exception e) {
+            return false;
         }
     }
 

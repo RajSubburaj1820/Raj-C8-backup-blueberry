@@ -91,6 +91,8 @@ public class RuleTasklistRepository implements Rule {
         ruleInfo.addDetails(resultParameter.accessActuator ? "Access RepositoryName exploring Operate /actuator/env" : "Access RepositoryName exploring Blueberry configuration");
 
         String taskListRepository = (String) resultParameter.parameters.get(TASKLIST_REPOSITORY);
+        ruleInfo.addActuatorEnvInfo("Tasklist", blueberryConfig.getTasklistActuatorUrl() + "/actuator/env",
+                resultParameter, taskListRepository);
 
         if (taskListRepository == null) {
             ruleInfo.setStatus(RuleStatus.FAILED);

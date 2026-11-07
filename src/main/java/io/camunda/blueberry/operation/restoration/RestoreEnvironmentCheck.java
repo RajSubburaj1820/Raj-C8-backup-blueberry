@@ -76,7 +76,7 @@ public class RestoreEnvironmentCheck {
         result.put("executionEnabled", blueberryConfig.isRestoreExecutionEnabled());
         result.put("namespace", layout.namespace());
         result.put("helmRelease", layout.helmRelease());
-        result.put("elasticsearchRepository", layout.elasticsearchRepository());
+        result.put("repositories", layout.repositories());
         result.put("workloads", workloads);
         result.put("ready", blockers.isEmpty() && blueberryConfig.isRestoreExecutionEnabled());
         result.put("blockers", blockers);

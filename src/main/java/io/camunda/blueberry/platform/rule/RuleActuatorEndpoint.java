@@ -162,8 +162,15 @@ public class RuleActuatorEndpoint implements Rule {
                 + "In the Helm values, in the 'env' of the '" + componentName.toLowerCase() + "' section, "
                 + "add '" + endpointId + "' to the value of management.endpoints.web.exposure.include, for example:\n"
                 + "- name: management.endpoints.web.exposure.include\n"
-                + "  value: health, prometheus, loggers, usage-metrics, " + String.join(", ", ids) + ", env\n"
-                + "- name: management.endpoint.env.show.values\n"
-                + "  value: ALWAYS\n";
+                + "  value: health, prometheus, loggers, usage-metrics, " + String.join(", ", ids) + "\n"
+                + "- name: management.endpoint.env.show-values\n"
+                + "  value: ALWAYS\n"
+                + "('show-values' has a dash: 'show.values' is ignored, and the values of env are then hidden: ******)\n"
+                + "If the endpoint is still not listed, enable its access too (Camunda 8.7 sets the access of every endpoint to none by default):\n"
+                + "- name: management.endpoint." + endpointId + ".access\n"
+                + "  value: unrestricted\n"
+                + "If a name with dots is ignored (it happens on Zeebe), use the environment variable form: "
+                + "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE, MANAGEMENT_ENDPOINT_ENV_SHOWVALUES, "
+                + "MANAGEMENT_ENDPOINT_" + endpointId.toUpperCase() + "_ACCESS.\n";
     }
 }

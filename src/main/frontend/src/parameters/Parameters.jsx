@@ -10,6 +10,7 @@ import React from 'react';
 import {Button, InlineNotification, TextInput} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
 import RestCallService from "../services/RestCallService";
+import RepositoryTable from "../component/RepositoryTable";
 
 class Parameters extends React.Component {
 
@@ -152,6 +153,16 @@ class Parameters extends React.Component {
                     </InlineNotification>
                 </div>
                 <div className="row" style={{marginTop: "10px"}}>
+                    <div className="col-md-8">
+                        <RepositoryTable/>
+                        <p className="text-muted">
+                            Configuration: the repository used by the backup and by the restore.
+                            Cluster: the repository read in the component. "env not exposed" means that the
+                            component does not expose the endpoint env of its actuator.
+                        </p>
+                    </div>
+                </div>
+                <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-2">
                         <TextInput
                             id="operateRepository"
@@ -287,9 +298,27 @@ class Parameters extends React.Component {
                 <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-2">
                         <TextInput
-                            id="elasticsearchContainerType"
-                            labelText="elasticsearchContainerType"
-                            value={this.state.parameters.elasticsearchContainerType}
+                            id="containerType"
+                            labelText="containerType"
+                            value={this.state.parameters.containerType}
+                            readOnly
+                        />
+                    </div>
+                </div>
+                <div className="row" style={{marginTop: "10px"}}>
+                    <div className="col-md-2">
+                        <TextInput
+                            id="gcsBucket"
+                            labelText="gcsBucket"
+                            value={this.state.parameters.gcsBucket}
+                            readOnly
+                        />
+                    </div>
+                    <div className="col-md-2">
+                        <TextInput
+                            id="gcsBasePath"
+                            labelText="gcsBasePath"
+                            value={this.state.parameters.gcsBasePath}
                             readOnly
                         />
                     </div>

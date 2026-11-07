@@ -140,7 +140,8 @@ class Configuration extends React.Component {
                                                 </tr>
                                                 {verification.error &&
                                                     <tr className="border">
-                                                        <td colSpan="2" className="border p-2 text-danger"
+                                                        <td colSpan="2"
+                                                            className={verification.actionStatus === "INFO" ? "border p-2 text-muted" : "border p-2 text-danger"}
                                                             style={{whiteSpace: "pre-wrap"}}>
                                                             {verification.error}
                                                         </td>
@@ -237,6 +238,9 @@ class Configuration extends React.Component {
 
             case "NOT_CONNECTED":
                 return <Tag type="magenta">Not connected</Tag>
+
+            case "INFO":
+                return <Tag type="cyan">Info</Tag>
 
 
             default:

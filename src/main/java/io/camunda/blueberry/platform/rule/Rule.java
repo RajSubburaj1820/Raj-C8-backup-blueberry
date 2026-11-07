@@ -28,7 +28,10 @@ public interface Rule {
     RuleInfo configure();
 
 
-    enum RuleStatus {DEACTIVATED, CORRECT, FAILED, INPROGRESS, FAILEDBUTWILLBEFIXED}
+    /**
+     * INFO is only used on a verification: it gives an information, it is neither a success nor an error
+     */
+    enum RuleStatus {DEACTIVATED, CORRECT, FAILED, INPROGRESS, FAILEDBUTWILLBEFIXED, INFO}
 
 
     /**
@@ -113,6 +116,44 @@ public interface Rule {
          */
         public void addVerificationsWithError(String action, RuleStatus actionStatus, String command, String error) {
             this.listVerifications.add(new Tuple(action, actionStatus, command, error));
+        }
+
+        /**
+         * Add an information line (status INFO): it does not change the status of the rule
+         */
+        public void addInfo(String action, String command, String message) {
+            this.listVerifications.add(new Tuple(action, RuleStatus.INFO, command, message));
+        }
+
+        /**
+         * Give the result of the access to /actuator/env: is it possible to read the repository name from the component,
+         * and where the value used by the rule comes from
+         *
+         * @param envUrl         url of /actuator/env of the component
+         * @param result         result of the access to the actuator
+         * @param repositoryName name of the repository used by the rule
+         */
+        public void addActuatorEnvInfo(String componentName, String envUrl, AccessParameterValue.ResultParameter result,
+                                       Object repositoryName) {
+            String action = "Access the actuator " + envUrl;
+            if (result.accessActuator) {
+                addInfo(action, envUrl,
+                        "Can access the actuator. The repository name [" + repositoryName + "] is read from " + componentName + ".");
+            } else if (result.masked) {
+                addInfo(action, envUrl,
+                        "Can access the actuator, but " + componentName + " hides the values of env (******). "
+                                + "The repository name [" + repositoryName + "] comes from the blueberry configuration. "
+                                + "To read it from the component, set management.endpoint.env.show-values to ALWAYS.");
+            } else if (result.envReachable) {
+                addInfo(action, envUrl,
+                        "Can access the actuator, but the variable of the repository name is not defined in " + componentName
+                                + ". The repository name [" + repositoryName + "] comes from the blueberry configuration.");
+            } else {
+                addInfo(action, envUrl,
+                        "Can't access the actuator (it is optional). The repository name [" + repositoryName
+                                + "] comes from the blueberry configuration. Expose 'env' on " + componentName
+                                + " to read the value from the component.");
+            }
         }
 
         public Rule getRule() {

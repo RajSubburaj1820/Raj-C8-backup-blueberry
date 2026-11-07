@@ -92,6 +92,8 @@ public class RuleOptimizeRepository implements Rule {
         ruleInfo.addDetails(resultParameter.accessActuator ? "Access RepositoryName exploring Optimize /actuator/env" : "Access RepositoryName exploring Blueberry configuration");
 
         String optimizeRepository = (String) resultParameter.parameters.get(OPTIMIZE_REPOSITORY);
+        ruleInfo.addActuatorEnvInfo("Optimize", blueberryConfig.getOptimizeActuatorUrl() + "/actuator/env",
+                resultParameter, optimizeRepository);
 
         if (optimizeRepository == null) {
             ruleInfo.setStatus(RuleStatus.FAILED);

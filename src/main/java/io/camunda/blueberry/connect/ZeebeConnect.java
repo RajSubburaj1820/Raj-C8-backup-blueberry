@@ -126,6 +126,19 @@ public class ZeebeConnect extends WebActuator implements BackupComponentInt {
         return connection();
     }
 
+    /**
+     * Return the connected Zeebe client, to send commands (deploy a process, start an instance...)
+     *
+     * @throws OperationException if Zeebe is not reachable
+     */
+    public ZeebeClient getConnectedZeebeClient() throws OperationException {
+        if (!activateConnection()) {
+            throw OperationException.getInstanceFromCode(OperationException.BLUEBERRYERRORCODE.NO_ZEEBE_CONNECTION,
+                    "No connection to Zeebe", "Connection is not established to Zeebe");
+        }
+        return myZeebeClient;
+    }
+
     public ClusterInformation getClusterInformation() {
         try {
             final Topology topology = myZeebeClient.newTopologyRequest().send().join();

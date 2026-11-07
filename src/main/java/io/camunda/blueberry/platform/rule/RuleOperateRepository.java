@@ -92,6 +92,8 @@ public class RuleOperateRepository implements Rule {
         ruleInfo.addDetails(resultParameter.accessActuator ? "Access RepositoryName exploring Operate /actuator/env" : "Access RepositoryName exploring Blueberry configuration");
 
         Object operateRepository = resultParameter.parameters.get(OPERATE_REPOSITORY);
+        ruleInfo.addActuatorEnvInfo("Operate", blueberryConfig.getOperateActuatorUrl() + "/actuator/env",
+                resultParameter, operateRepository);
 
         if (operateRepository == null) {
             ruleInfo.setStatus(RuleStatus.FAILED);
