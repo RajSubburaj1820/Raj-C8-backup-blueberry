@@ -38,6 +38,26 @@ public final class DashboardBackupViewHelper {
         return history;
     }
 
+    /**
+     * All the backups, oldest first (no cap): backup id, status and backup time. The UI groups them by day.
+     */
+    public static List<Map<String, Object>> buildTimeline(List<BackupInfo> listBackups) {
+        List<BackupInfo> sorted = new ArrayList<>(listBackups);
+        sorted.sort(Comparator.comparingLong(BackupInfo::getBackupId));
+
+        List<Map<String, Object>> timeline = new ArrayList<>();
+        for (BackupInfo info : sorted) {
+            Map<String, Object> point = new HashMap<>();
+            point.put("backupId", info.backupId);
+            point.put("status", statusKey(info.status));
+            if (info.backupTime != null) {
+                point.put("backupTime", info.backupTime.toString());
+            }
+            timeline.add(point);
+        }
+        return timeline;
+    }
+
     public static Map<String, Object> latestBackupSummary(List<BackupInfo> listBackups) {
         Map<String, Object> summary = new HashMap<>();
         if (listBackups == null || listBackups.isEmpty()) {

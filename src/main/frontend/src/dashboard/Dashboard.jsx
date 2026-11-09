@@ -11,6 +11,7 @@ import React from 'react';
 import {Button, InlineNotification, Tag} from "carbon-components-react";
 import {Card} from 'react-bootstrap';
 import Chart from "../component/Chart";
+import BackupTimeline from "../component/BackupTimeline";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import RestCallService from "../services/RestCallService";
 import {ArrowRepeat, Terminal} from "react-bootstrap-icons";
@@ -134,18 +135,7 @@ class Dashboard extends React.Component {
                                         No backups in the merged list yet. Start a backup from the Backup tab, or
                                         check component connectivity below if you expect existing backups.
                                     </p>}
-                                <Chart type="HorizontalBar"
-                                       dataList={this.enrichHistoryForChart(this.state.dashboard.backup.history)}
-                                       oneColor={false}
-                                       options={{
-                                           title: this.state.title,
-                                           showXLabel: true,
-                                           showYLabel: true,
-                                           width: 200,
-                                           height: Math.max(120, (this.state.dashboard.backup.history?.length || 1) * 28),
-                                           showGrid: false
-                                       }}
-                                       title="Backup timeline"/>
+                                <BackupTimeline timeline={this.getTimeline(this.state.dashboard.backup)}/>
                                 <div style={{marginTop: "8px", fontSize: "0.85rem"}}>
                                     <Tag type="green">Complete</Tag>{" "}
                                     <Tag type="magenta">Partial</Tag>{" "}
@@ -425,6 +415,24 @@ class Dashboard extends React.Component {
             default:
                 return <Tag type="gray">Unknown</Tag>;
         }
+    }
+
+    /**
+     * All the backups for the time line. A server which does not send "timeline" yet (older version, not restarted)
+     * sends only "history" (20 newest, label "ID 12"): use it.
+     */
+    getTimeline(backup) {
+        if (!backup) {
+            return [];
+        }
+        if (backup.timeline) {
+            return backup.timeline;
+        }
+        return (backup.history || []).map((point) => ({
+            backupId: parseInt(String(point.label).replace("ID ", ""), 10),
+            status: point.status,
+            backupTime: point.backupTime
+        }));
     }
 
     enrichHistoryForChart(history) {

@@ -97,6 +97,7 @@ public class DashboardRestController {
                 List<BackupCompleteness.Detail> completeness = backupManager.getBackupCompletenessDetails();
                 status.backup.backupsComplete = (int) completeness.stream().filter(BackupCompleteness.Detail::complete).count();
                 status.backup.history = DashboardBackupViewHelper.buildHistory(listBackups);
+                status.backup.timeline = DashboardBackupViewHelper.buildTimeline(listBackups);
                 status.backup.latest = DashboardBackupViewHelper.latestBackupSummary(listBackups);
             } catch (OperationException e) {
                 logger.warn("Dashboard backup list unavailable: {}", e.getMessage());
@@ -188,6 +189,9 @@ public class DashboardRestController {
     private class DashBackupInfo {
         @JsonProperty
         List<Map<String, Object>> history = new ArrayList<>();
+        /** All the backups, oldest first: the backup time line (one box per backup, per day) */
+        @JsonProperty
+        List<Map<String, Object>> timeline = new ArrayList<>();
         @JsonProperty
         Map<String, Object> latest = new HashMap<>();
         @JsonProperty

@@ -31,6 +31,12 @@ class Parameters extends React.Component {
         this.refresh();
     }
 
+    /* Is the container configured in Blueberry of this type? (gcs, azure, s3), whatever the case */
+    isContainerType(type) {
+        const containerType = this.state.parameters.containerType;
+        return !!containerType && String(containerType).trim().toLowerCase() === type;
+    }
+
     render() {
         const rows = Object.entries(this.state.parameters).map(([key, value], index) => ({
             id: index.toString(),
@@ -170,6 +176,7 @@ class Parameters extends React.Component {
                             value={this.state.parameters.operateRepository}
                             readOnly
                         />
+                        <b>{this.state.parameters.operateSource}</b>
                     </div>
                     <div className="col-md-2">
                         <TextInput
@@ -178,9 +185,6 @@ class Parameters extends React.Component {
                             value={this.state.parameters.operateContainerBasePath}
                             readOnly
                         />
-                    </div>
-                    <div className="col-md-2">
-                        <b>{this.state.parameters.operateSource}</b>
                     </div>
                     <div className="col-md-6">
                         If Operate open the actuator/env API, then information come directly from Operate. Else, from
@@ -209,6 +213,7 @@ class Parameters extends React.Component {
                             value={this.state.parameters.tasklistRepository}
                             readOnly
                         />
+                        <b>{this.state.parameters.tasklistSource}</b>
                     </div>
                     <div className="col-md-2">
                         <TextInput
@@ -305,6 +310,8 @@ class Parameters extends React.Component {
                         />
                     </div>
                 </div>
+                {/* Only the fields of the selected container type are displayed */}
+                {this.isContainerType("gcs") &&
                 <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-2">
                         <TextInput
@@ -322,7 +329,8 @@ class Parameters extends React.Component {
                             readOnly
                         />
                     </div>
-                </div>
+                </div>}
+                {this.isContainerType("azure") &&
                 <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-2">
                         <TextInput
@@ -332,7 +340,8 @@ class Parameters extends React.Component {
                             readOnly
                         />
                     </div>
-                </div>
+                </div>}
+                {this.isContainerType("s3") &&
                 <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-2">
                         <TextInput
@@ -360,7 +369,7 @@ class Parameters extends React.Component {
                         />
                     </div>
 
-                </div>
+                </div>}
 
             </div>
         )

@@ -39,6 +39,19 @@ class DashboardBackupViewHelperTest {
     }
 
     @Test
+    void buildTimeline_keepsAllBackupsOldestFirst() {
+        List<BackupInfo> backups = new ArrayList<>();
+        for (long id = 30; id >= 1; id--) {
+            backups.add(info(id, BackupInfo.Status.COMPLETED));
+        }
+        List<Map<String, Object>> timeline = DashboardBackupViewHelper.buildTimeline(backups);
+        assertEquals(30, timeline.size());
+        assertEquals(1L, timeline.get(0).get("backupId"));
+        assertEquals(30L, timeline.get(29).get("backupId"));
+        assertEquals("2026-01-15T10:00", timeline.get(0).get("backupTime"));
+    }
+
+    @Test
     void latestBackupSummary_picksHighestId() {
         Map<String, Object> summary = DashboardBackupViewHelper.latestBackupSummary(
                 List.of(info(3, BackupInfo.Status.COMPLETED), info(9, BackupInfo.Status.PARTIALBACKUP)));
