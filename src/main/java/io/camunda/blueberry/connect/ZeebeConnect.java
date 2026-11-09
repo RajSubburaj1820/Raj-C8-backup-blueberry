@@ -237,7 +237,7 @@ public class ZeebeConnect extends WebActuator implements BackupComponentInt {
         Map<String, Object> backupBody = Map.of("backupId", backupId);
         ResponseEntity<String> backupResponse = restTemplate.postForEntity(blueberryConfig.getZeebeActuatorUrl() + "/actuator/backups", backupBody, String.class);
 
-        logger.info("Backup status response for url {}: {}, {}", blueberryConfig.getZeebeActuatorUrl(), backupResponse.getStatusCodeValue(), backupResponse.getBody());
+        logger.info("Backup status response for url {}: {}, {}", blueberryConfig.getZeebeActuatorUrl(), backupResponse.getStatusCode().value(), backupResponse.getBody());
         backupOperation.status = backupResponse.getStatusCode().value();
 
         if (backupResponse.getStatusCode().is2xxSuccessful()) {
@@ -292,7 +292,7 @@ public class ZeebeConnect extends WebActuator implements BackupComponentInt {
             backupOperation.status = response.getStatusCode().value();
 
             logger.info("Backup status response for URL {}: {}, {}",
-                    blueberryConfig.getZeebeActuatorUrl(), response.getStatusCodeValue(), response.getBody());
+                    blueberryConfig.getZeebeActuatorUrl(), response.getStatusCode().value(), response.getBody());
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 try {

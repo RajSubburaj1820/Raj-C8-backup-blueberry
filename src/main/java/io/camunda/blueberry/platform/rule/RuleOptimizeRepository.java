@@ -106,9 +106,9 @@ public class RuleOptimizeRepository implements Rule {
         if (ruleInfo.inProgress()) {
             OperationResult operationResult = elasticSearchConnect.existRepository(optimizeRepository);
             accessElasticsearchRepository = operationResult.resultBoolean;
-            ruleInfo.addVerificationsButWillBeFixed("Check Elasticsearch repository [" + optimizeRepository + "] :"
+            ruleInfo.addVerifications("Check Elasticsearch repository [" + optimizeRepository + "] :"
                             + operationResult.details,
-                    accessElasticsearchRepository ? RuleStatus.CORRECT : RuleStatus.FAILED,
+                    accessElasticsearchRepository ? RuleStatus.CORRECT : execute? RuleStatus.FAILEDBUTWILLBEFIXED: RuleStatus.FAILED,
                     operationResult.command);
 
             // if the repository exist, then we stop the rule execution here
@@ -131,14 +131,13 @@ public class RuleOptimizeRepository implements Rule {
                     blueberryConfig.getZeebeContainerType(),
                     blueberryConfig.getOptimizeContainerBasePath());
             if (operationResult.success) {
-                ruleInfo.addDetails("Repository is created in ElasticSearch");
+                ruleInfo.addActivity("Repository is created in ElasticSearch", RuleStatus.CORRECT, operationResult.command);
             } else {
                 ruleInfo.addError("Error when creating the repository in ElasticSearch :" + operationResult.details);
                 ruleInfo.setStatus(RuleStatus.FAILED);
             }
             ruleInfo.addVerifications("Check Elasticsearch repository [" + optimizeRepository
-
-                            + "] basePath[" + blueberryConfig.getOperateContainerBasePath()
+                            + "] basePath[" + blueberryConfig.getOptimizeContainerBasePath()
                             + "] " + operationResult.details,
                     operationResult.success ? RuleStatus.CORRECT : RuleStatus.FAILED,
                     operationResult.command);

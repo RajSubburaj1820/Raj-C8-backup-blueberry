@@ -161,7 +161,9 @@ public class ElasticSearchConnect implements BackupComponentInt {
             operationResult.success = false;
             operationResult.details = "Can't create repository : RepositoryName[" + repositoryName
                     + "] using container name[" + container.getInformation()
-                    + "] Type[" + containerType + "] path[" + basePathInsideContainer + "] : "
+                    + "] Type[" + containerType + "] path[" + basePathInsideContainer + "] "
+                    + "command[" + operationResult.command+"] "
+                    + "jsonPayload[" + jsonPayload + "] "
                     + e.getMessage();
             return operationResult;
         }
@@ -256,7 +258,7 @@ public class ElasticSearchConnect implements BackupComponentInt {
 
             int status = jsonNode == null ? null : jsonNode.path("status").asInt();
 
-            logger.info("backup status response for url {}: {}, {}", urlComplete, response.getStatusCodeValue(), response.getBody());
+            logger.info("backup status response for url {}: {}, {}", urlComplete, response.getStatusCode().value(), response.getBody());
             // Check status
             backupIsFinished = true;
             JsonNode snapshots = jsonNode.path("snapshots");

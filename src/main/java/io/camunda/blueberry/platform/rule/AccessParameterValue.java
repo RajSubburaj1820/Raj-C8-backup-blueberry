@@ -52,7 +52,15 @@ public class AccessParameterValue {
             logger.info("Access actuator component [{}] via URL[{}] : ", component, actuatorUrl);
             actuator = accessActuator(listParameterActuator, actuatorUrl);
         } catch (Exception e) {
-            logger.info("Can't access actuator component [{}] via URL[{}] : ", component, actuatorUrl, e);
+            if (e instanceof org.springframework.web.client.HttpStatusCodeException httpError) {
+                // Expected: 404/401/403 when /actuator/env is not exposed or protected, 503 when the component is stopped
+                // (during a restore). The access is optional, the value comes from the Blueberry configuration.
+                // No stack trace for that.
+                logger.info("Can't access actuator component [{}] via URL[{}]: HTTP {}. The 'env' endpoint is not exposed, or the component is not running (optional): the Blueberry configuration is used.",
+                        component, actuatorUrl, httpError.getStatusCode().value());
+            } else {
+                logger.info("Can't access actuator component [{}] via URL[{}] : ", component, actuatorUrl, e);
+            }
             actuator = Collections.emptyMap();
             throw CommunicationException.getInstanceFromComponent(component, e);
         }

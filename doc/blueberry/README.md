@@ -121,6 +121,8 @@ For Camunda **8.7**, Start restore follows the PwC 8.7 runbook:
    If a broker logs none of them in the time allowed (`blueberry.restore.zeebeRestoreTimeoutSeconds`), the restore stops with the list of
    the brokers not detected.
 10. Remove those variables, start the other components, and restart Zeebe.
+11. Cluster restarted: wait until the Zeebe brokers (`blueberry.restore.zeebeRestoreTimeoutSeconds`) and the other components are ready.
+    The restore is finished, and its status changes, only after this step.
 
 The restore must then be validated manually: open Operate, Tasklist and Optimize, check the data from the backup time, and start one test process.
 

@@ -39,7 +39,8 @@ public record CamundaVersionProfile(
                     RestorePhase.automated("es_snapshots", "Restore full Elasticsearch snapshots with no index filter"),
                     RestorePhase.automated("zeebe_delete_volumes", "Delete Zeebe persistent volume claims"),
                     RestorePhase.automated("zeebe_broker_restore", "Restore Zeebe brokers with ZEEBE_RESTORE"),
-                    RestorePhase.automated("zeebe_scale_up", "Remove ZEEBE_RESTORE and start the other components")
+                    RestorePhase.automated("zeebe_scale_up", "Remove ZEEBE_RESTORE and start the other components"),
+                    RestorePhase.automated("cluster_restarted", "Cluster restarted: wait until Zeebe and the other components are ready")
             );
         }
         String doc = docsRestoreUrl;

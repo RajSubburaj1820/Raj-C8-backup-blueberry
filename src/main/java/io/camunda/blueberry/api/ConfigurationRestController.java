@@ -68,10 +68,12 @@ public class ConfigurationRestController {
                                         .stream()
                                         .map(tuple -> {
                                             return Map.of(
-                                                    "action", tuple.action(),
+                                                    "action", tuple.action() == null ? "" : tuple.action(),
+                                                    "activity", tuple.activity() == null ? "" : tuple.activity(),
                                                     "actionStatus", tuple.actionStatus().toString(),
                                                     "command", tuple.command() == null ? "" : tuple.command(),
-                                                    "error", tuple.error() == null ? "" : tuple.error()
+                                                    "error", tuple.error() == null ? "" : tuple.error(),
+                                                    "configuration", tuple.configuration() == null ? "" : tuple.configuration()
                                             );
                                         })
                                         .toList());
@@ -105,10 +107,12 @@ public class ConfigurationRestController {
                                         .stream()
                                         .map(tuple -> {
                                             return Map.of(
-                                                    "action", tuple.action(),
+                                                    "action", tuple.action()==null? "": tuple.action(),
+                                                    "activity", tuple.activity()==null? "": tuple.activity(),
                                                     "actionStatus", tuple.actionStatus().toString(),
                                                     "command", tuple.command() == null ? "" : tuple.command(),
-                                                    "error", tuple.error() == null ? "" : tuple.error()
+                                                    "error", tuple.error() == null ? "" : tuple.error(),
+                                                    "configuration", tuple.configuration() == null ? "" : tuple.configuration()
                                             );
                                         })
                                         .toList());

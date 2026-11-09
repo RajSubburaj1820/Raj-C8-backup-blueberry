@@ -51,4 +51,11 @@ class RestorePreflightTest {
         assertTrue(ids.contains("zeebe_broker_restore"));
         assertTrue(ids.contains("zeebe_scale_down"));
     }
+
+    @Test
+    void restore87EndsWithTheClusterRestartedStep() {
+        List<String> ids = PROFILE.restorePhases().stream().map(p -> p.id()).toList();
+        org.junit.jupiter.api.Assertions.assertEquals(11, ids.size());
+        org.junit.jupiter.api.Assertions.assertEquals("cluster_restarted", ids.get(10));
+    }
 }

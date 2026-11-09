@@ -155,7 +155,7 @@ class Restore extends React.Component {
             <Card style={{marginTop: "12px", marginBottom: "12px"}}>
                 <Card.Header>Restore progress</Card.Header>
                 <Card.Body>
-                    <p>Status: <Tag type="blue">{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
+                    <p>Status: <Tag type={m.statusRestore === "FAILED" ? "red" : "blue"}>{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
                     <p>Step {m.step}/{m.totalNumberOfSteps}: {m.stepName}</p>
                     <p style={{marginBottom: "4px"}}>Repositories used by the restore (the ones of the backup):</p>
                     <RepositoryTable/>

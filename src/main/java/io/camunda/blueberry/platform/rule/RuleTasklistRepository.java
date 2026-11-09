@@ -105,7 +105,7 @@ public class RuleTasklistRepository implements Rule {
         if (ruleInfo.inProgress()) {
             OperationResult operationResult = elasticSearchConnect.existRepository(taskListRepository);
             accessElasticsearchRepository = operationResult.resultBoolean;
-            ruleInfo.addVerificationsButWillBeFixed("Check Elasticsearch repository [" + taskListRepository + "] :"
+            ruleInfo.addVerifications("Check Elasticsearch repository [" + taskListRepository + "] :"
                             + operationResult.details,
                     accessElasticsearchRepository ? RuleStatus.CORRECT : RuleStatus.FAILED,
                     operationResult.command);
@@ -130,7 +130,7 @@ public class RuleTasklistRepository implements Rule {
                     blueberryConfig.getZeebeContainerType(),
                     blueberryConfig.getTasklistContainerBasePath());
             if (operationResult.success) {
-                ruleInfo.addDetails("Repository is created in ElasticSearch");
+                ruleInfo.addActivity("Repository is created in ElasticSearch", RuleStatus.CORRECT, operationResult.command);
             } else {
                 ruleInfo.addError("Error when creating the repository in ElasticSearch :" + operationResult.details);
                 ruleInfo.setStatus(RuleStatus.FAILED);

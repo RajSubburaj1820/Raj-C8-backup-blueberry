@@ -84,7 +84,8 @@ public class RuleActuatorEndpoint implements Rule {
             } else {
                 notAccessible.add(endpoint.endpointId());
                 ruleInfo.addVerificationsWithError("Access " + url, RuleStatus.FAILED, url,
-                        getFixExplanation(endpoint.endpointId()) + " " + problem);
+                        problem + "\n" + getFixExplanation(endpoint.endpointId()),
+                        getFixConfiguration(endpoint.endpointId()));
             }
         }
 
@@ -154,23 +155,34 @@ public class RuleActuatorEndpoint implements Rule {
      * What to fix, shown on the action line when an endpoint fails
      */
     private String getFixExplanation(String endpointId) {
+        return componentName + " must expose the endpoint /actuator/" + endpointId + " on its management port. "
+                + "In the Helm values, in the 'env' of the '" + componentName.toLowerCase() + "' section, "
+                + "add '" + endpointId + "' to the value of management.endpoints.web.exposure.include, "
+                + "and enable the access of the endpoint (Camunda 8.7 sets the access of every endpoint to none by default). "
+                + "The name of the property is 'show-values', with a dash: 'show.values' is ignored, and the values of env are "
+                + "then hidden (******). "
+                + "If a name with dots is ignored (it happens on Zeebe), use the environment variable form: "
+                + "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE, MANAGEMENT_ENDPOINT_ENV_SHOWVALUES, "
+                + "MANAGEMENT_ENDPOINT_" + endpointId.toUpperCase() + "_ACCESS.";
+    }
+
+    /**
+     * The Helm values to add, displayed in a box under the explanation
+     */
+    private String getFixConfiguration(String endpointId) {
         List<String> ids = new ArrayList<>();
         for (EndpointCheck endpoint : endpoints) {
             ids.add(endpoint.endpointId());
         }
-        return componentName + " must expose the endpoint /actuator/" + endpointId + " on its management port. "
-                + "In the Helm values, in the 'env' of the '" + componentName.toLowerCase() + "' section, "
-                + "add '" + endpointId + "' to the value of management.endpoints.web.exposure.include, for example:\n"
-                + "- name: management.endpoints.web.exposure.include\n"
-                + "  value: health, prometheus, loggers, usage-metrics, " + String.join(", ", ids) + "\n"
-                + "- name: management.endpoint.env.show-values\n"
-                + "  value: ALWAYS\n"
-                + "('show-values' has a dash: 'show.values' is ignored, and the values of env are then hidden: ******)\n"
-                + "If the endpoint is still not listed, enable its access too (Camunda 8.7 sets the access of every endpoint to none by default):\n"
-                + "- name: management.endpoint." + endpointId + ".access\n"
-                + "  value: unrestricted\n"
-                + "If a name with dots is ignored (it happens on Zeebe), use the environment variable form: "
-                + "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE, MANAGEMENT_ENDPOINT_ENV_SHOWVALUES, "
-                + "MANAGEMENT_ENDPOINT_" + endpointId.toUpperCase() + "_ACCESS.\n";
+        StringBuilder configuration = new StringBuilder();
+        configuration.append("- name: management.endpoints.web.exposure.include\n")
+                .append("  value: health, prometheus, loggers, usage-metrics, ").append(String.join(", ", ids)).append("\n");
+        if (ids.contains("env")) {
+            configuration.append("- name: management.endpoint.env.show-values\n")
+                    .append("  value: ALWAYS\n");
+        }
+        configuration.append("- name: management.endpoint.").append(endpointId).append(".access\n")
+                .append("  value: unrestricted");
+        return configuration.toString();
     }
 }

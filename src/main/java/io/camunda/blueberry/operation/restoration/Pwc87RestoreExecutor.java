@@ -199,6 +199,8 @@ public final class Pwc87RestoreExecutor {
         kubernetes.removeStatefulSetEnv(layout.zeebe().name(), "ZEEBE_RESTORE_FROM_BACKUP_ID");
         scaleApplications(original);
         kubernetes.rolloutRestartStatefulSet(layout.zeebe().name());
+
+        log.operationStep(null, "Cluster restarted");
         kubernetes.waitUntilReady(layout.zeebe(), zeebeReplicas, layout.zeebeRestoreTimeoutSeconds());
         waitReady(layout, applicationsOnly(original), false);
 

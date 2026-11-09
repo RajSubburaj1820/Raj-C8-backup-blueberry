@@ -12,6 +12,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -64,7 +65,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
     public void scale(WorkloadRef workload, int replicas) throws OperationException {
         switch (workload.kind()) {
             case DEPLOYMENT -> client().apps().deployments().inNamespace(namespace()).withName(workload.name()).scale(replicas);
-            case STATEFUL_SET -> client().apps().statefulSets().inNamespace(namespace()).withName(workload.name()).scale(replicas);
+            case STATEFUL_SET -> retryOnConflict(() -> client().apps().statefulSets().inNamespace(namespace()).withName(workload.name()).scale(replicas));
         }
     }
 
@@ -116,7 +117,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
     @Override
     public void rolloutRestartStatefulSet(String statefulSetName) throws OperationException {
         String restartedAt = Instant.now().toString();
-        client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
+        retryOnConflict(() -> client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
             if (statefulSet.getSpec().getTemplate().getMetadata() == null) {
                 statefulSet.getSpec().getTemplate().setMetadata(new ObjectMeta());
             }
@@ -127,7 +128,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
             }
             annotations.put("kubectl.kubernetes.io/restartedAt", restartedAt);
             return statefulSet;
-        });
+        }));
     }
 
     @Override
@@ -209,7 +210,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
     }
 
     private void editZeebeEnv(String statefulSetName, String envName, String value, boolean remove) throws OperationException {
-        client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
+        retryOnConflict(() -> client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
             Container container = zeebeContainer(statefulSet);
             List<EnvVar> env = container.getEnv();
             if (env == null) {
@@ -221,7 +222,33 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
                 env.add(new EnvVarBuilder().withName(envName).withValue(value).build());
             }
             return statefulSet;
-        });
+        }));
+    }
+
+    /**
+     * The StatefulSet is updated by its controller (status, pods) while Blueberry modifies it: Kubernetes then answers
+     * 409 "the object has been modified; please apply your changes to the latest version". The edit is a
+     * read-modify-write, so it is simply done again on the latest version.
+     */
+    @FunctionalInterface
+    private interface ThrowingRunnable {
+        void run() throws OperationException;
+    }
+
+    private void retryOnConflict(ThrowingRunnable operation) throws OperationException {
+        int attempt = 0;
+        while (true) {
+            try {
+                operation.run();
+                return;
+            } catch (KubernetesClientException e) {
+                attempt++;
+                if (e.getCode() != 409 || attempt >= 10) {
+                    throw e;
+                }
+                sleep();
+            }
+        }
     }
 
     private static Container zeebeContainer(StatefulSet statefulSet) {
