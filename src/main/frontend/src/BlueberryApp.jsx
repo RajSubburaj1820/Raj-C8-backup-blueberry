@@ -156,7 +156,8 @@ class BlueberryApp extends React.Component {
         {this.state.frameContent === FRAME_NAME.DASHBOARD && <Dashboard/>}
         {this.state.frameContent === FRAME_NAME.BACKUP && <Backup/>}
         {this.state.frameContent === FRAME_NAME.SCHEDULER && <Scheduler/>}
-        {this.state.frameContent === FRAME_NAME.RESTORE && <Restore/>}
+        {this.state.frameContent === FRAME_NAME.RESTORE &&
+            <Restore onOpenConfiguration={() => this.clickMenu(FRAME_NAME.CONFIGURATION)}/>}
         {this.state.frameContent === FRAME_NAME.CONFIGURATION && <Configuration/>}
         {this.state.frameContent === FRAME_NAME.PARAMETERS && <Parameters/>}
 

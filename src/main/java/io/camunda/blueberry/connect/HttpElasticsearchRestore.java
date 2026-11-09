@@ -120,7 +120,7 @@ public class HttpElasticsearchRestore implements ElasticsearchRestoreApi {
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw esError("Elasticsearch " + method + " " + url + " returned " + response.getStatusCode().value());
             }
-            if (hasTopLevelError(body)) {
+            if (hasTopLevelElasticsearchError(body, objectMapper)) {
                 throw esError("Elasticsearch " + method + " " + url + " failed: " + trim(body));
             }
             return body;
@@ -136,7 +136,7 @@ public class HttpElasticsearchRestore implements ElasticsearchRestoreApi {
      * Do not search the word "error" in the whole body: a valid answer can contain it, for example
      * a template with a field named "error" (Kibana reporting).
      */
-    private boolean hasTopLevelError(String body) {
+    static boolean hasTopLevelElasticsearchError(String body, ObjectMapper objectMapper) {
         if (body == null || body.isBlank()) {
             return false;
         }

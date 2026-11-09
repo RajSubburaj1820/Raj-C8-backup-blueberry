@@ -26,6 +26,8 @@ class Restore extends React.Component {
             phases: [],
             executionEnabled: false,
             procedure: "",
+            readiness: null,
+            readinessLoading: true,
             display: {loading: false},
             status: "",
             selectedBackup: null,
@@ -37,11 +39,13 @@ class Restore extends React.Component {
         this.refreshListBackup = this.refreshListBackup.bind(this);
         this.refreshListBackupCallback = this.refreshListBackupCallback.bind(this);
         this.monitorRestore = this.monitorRestore.bind(this);
+        this.loadReadiness = this.loadReadiness.bind(this);
     }
 
     componentDidMount() {
         this.refreshListBackup();
         this.loadPhases();
+        this.loadReadiness();
         this.monitorRestore();
         this.monitorInterval = setInterval(this.monitorRestore, 5000);
     }
@@ -63,6 +67,75 @@ class Restore extends React.Component {
         });
     }
 
+    loadReadiness() {
+        this.setState({readinessLoading: true});
+        RestCallService.getInstance().getJson('blueberry/api/restore/readiness?', this, (httpPayload) => {
+            if (httpPayload.isError()) {
+                this.setState({
+                    readinessLoading: false,
+                    readiness: {
+                        ready: false,
+                        blockers: ["Could not load restore readiness: " + httpPayload.getError()]
+                    }
+                });
+            } else {
+                this.setState({readinessLoading: false, readiness: httpPayload.getData()});
+            }
+        });
+    }
+
+    restoreActionsAllowed() {
+        const {executionEnabled, readiness, readinessLoading} = this.state;
+        if (readinessLoading) {
+            return false;
+        }
+        if (!executionEnabled) {
+            return false;
+        }
+        return readiness && readiness.ready === true;
+    }
+
+    renderReadinessBanner() {
+        if (this.state.readinessLoading) {
+            return (
+                <InlineNotification kind="info" hideCloseButton="true" lowContrast="true" style={{marginTop: "8px"}}>
+                    Checking restore readiness (Kubernetes, Elasticsearch, workloads)...
+                </InlineNotification>
+            );
+        }
+        const r = this.state.readiness;
+        if (!r) {
+            return null;
+        }
+        if (r.ready === true) {
+            return (
+                <InlineNotification kind="success" hideCloseButton="true" lowContrast="true" style={{marginTop: "8px"}}>
+                    Environment is ready for live restore. Select a complete backup below to continue.
+                </InlineNotification>
+            );
+        }
+        const blockers = r.blockers || [];
+        const lines = [];
+        if (!this.state.executionEnabled) {
+            lines.push("Live restore is off. Set blueberry.restore.execution to true in application.yaml (or your profile).");
+        }
+        blockers.forEach(b => lines.push(b));
+        return (
+            <InlineNotification kind="warning" hideCloseButton="true" lowContrast="false" style={{marginTop: "8px"}}>
+                <strong>Restore is not available yet.</strong>
+                <ul style={{marginBottom: "4px", paddingLeft: "1.2rem"}}>
+                    {lines.map((line, i) => <li key={i}>{line}</li>)}
+                </ul>
+                {typeof this.props.onOpenConfiguration === "function" &&
+                    <Button kind="ghost" size="sm" onClick={() => this.props.onOpenConfiguration()}>
+                        Open Configuration
+                    </Button>}
+                {!this.props.onOpenConfiguration &&
+                    <span> Use <strong>Configuration</strong> in the top navigation to fix Kubernetes and actuator rules.</span>}
+            </InlineNotification>
+        );
+    }
+
     render() {
         return (
             <div className={"container"}>
@@ -74,6 +147,7 @@ class Restore extends React.Component {
                                 ? "Camunda 8.7 restore stops the cluster, deletes Camunda indices, deletes Zeebe volumes, and restores the selected backup. Live restore is off until blueberry.restore.execution is true."
                                 : "Automated restore is available for Camunda 8.7. Select 8.7 to use the PwC restore procedure."}
                         </InlineNotification>
+                        {this.renderReadinessBanner()}
                         {this.state.status &&
                             <InlineNotification kind="error" hideCloseButton="true" lowContrast="false">
                                 {this.state.status}
@@ -81,11 +155,15 @@ class Restore extends React.Component {
                     </div>
                 </div>
                 <div className="row" style={{marginTop: "10px"}}>
-                    <div className="col-md-2">
+                    <div className="col-md-4">
                         <Button className="btn btn-success btn-sm"
-                                onClick={() => this.refreshListBackup()}
+                                onClick={() => {
+                                    this.refreshListBackup();
+                                    this.loadReadiness();
+                                    this.loadPhases();
+                                }}
                                 disabled={this.state.display.loading}>
-                            <ArrowRepeat/> Refresh List Backup
+                            <ArrowRepeat/> Refresh backups &amp; readiness
                         </Button>
                     </div>
                 </div>
@@ -136,7 +214,7 @@ class Restore extends React.Component {
                     <Modal.Footer>
                         <Button kind="secondary" onClick={() => this.setState({showConfirm: false})}>Cancel</Button>
                         <Button kind="danger"
-                                disabled={!this.state.preflight?.allowed || this.state.preflightLoading || !this.state.executionEnabled}
+                                disabled={!this.state.preflight?.allowed || this.state.preflightLoading || !this.restoreActionsAllowed()}
                                 onClick={() => this.startRestore()}>
                             Start restore
                         </Button>
@@ -144,6 +222,22 @@ class Restore extends React.Component {
                 </Modal>
             </div>
         )
+    }
+
+    renderMonitorStatusTag(status) {
+        if (status === "FAILED") {
+            return <Tag type="red">Failed</Tag>;
+        }
+        if (status === "TERMINATED") {
+            return <Tag type="green">Completed — manual validation required</Tag>;
+        }
+        if (status === "INPROGRESS") {
+            return <Tag type="blue">In progress</Tag>;
+        }
+        if (status === "REQUIRES_MANUAL_STEPS") {
+            return <Tag type="gray">Manual steps required</Tag>;
+        }
+        return <Tag type="blue">{status}</Tag>;
     }
 
     renderMonitorCard() {
@@ -155,7 +249,16 @@ class Restore extends React.Component {
             <Card style={{marginTop: "12px", marginBottom: "12px"}}>
                 <Card.Header>Restore progress</Card.Header>
                 <Card.Body>
-                    <p>Status: <Tag type={m.statusRestore === "FAILED" ? "red" : "blue"}>{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
+                    <p>Status: {this.renderMonitorStatusTag(m.statusRestore)} Backup ID: {m.backupId}</p>
+                    {m.statusRestore === "TERMINATED" &&
+                        <InlineNotification kind="info" hideCloseButton="true" lowContrast="true">
+                            Automated restore steps finished. Validate Operate, Tasklist, and Optimize, then run a test process.
+                            This is not the same as a failed restore.
+                        </InlineNotification>}
+                    {m.statusRestore === "FAILED" &&
+                        <InlineNotification kind="error" hideCloseButton="true" lowContrast="false">
+                            Restore failed. See the step and log messages below for the failing phase.
+                        </InlineNotification>}
                     <p>Step {m.step}/{m.totalNumberOfSteps}: {m.stepName}</p>
                     <p style={{marginBottom: "4px"}}>Repositories used by the restore (the ones of the backup):</p>
                     <RepositoryTable/>
@@ -169,17 +272,32 @@ class Restore extends React.Component {
     }
 
     renderRestoreButton(row) {
-        const canRestore = row.complete === true && row.backupStatus !== "INPROGRESS";
-        if (canRestore) {
+        const backupOk = row.complete === true && row.backupStatus !== "INPROGRESS";
+        const actionsAllowed = this.restoreActionsAllowed();
+
+        if (backupOk && actionsAllowed) {
             return (
                 <Button size="sm" onClick={() => this.openConfirm(row)}>
                     Restore
                 </Button>
             );
         }
-        const reason = row.complete === false
-            ? "This backup is incomplete. Restore is disabled until all active components have a backup for this ID."
-            : "Restore is not available for this backup state.";
+
+        let reason;
+        if (!backupOk) {
+            reason = row.complete === false
+                ? "This backup is incomplete. Restore is disabled until all active components have a backup for this ID."
+                : "Restore is not available for this backup state.";
+        } else if (this.state.readinessLoading) {
+            reason = "Restore readiness is still loading.";
+        } else if (!this.state.executionEnabled) {
+            reason = "Live restore is off. Set blueberry.restore.execution=true.";
+        } else if (this.state.readiness && this.state.readiness.blockers && this.state.readiness.blockers.length > 0) {
+            reason = this.state.readiness.blockers[0];
+        } else {
+            reason = "Restore environment is not ready. Open Configuration or refresh readiness.";
+        }
+
         return (
             <OverlayTrigger placement="top" overlay={<Tooltip id={"tt-" + row.backupId}>{reason}</Tooltip>}>
                 <span className="d-inline-block">
@@ -191,6 +309,7 @@ class Restore extends React.Component {
 
     openConfirm(row) {
         this.loadPhases();
+        this.loadReadiness();
         this.setState({
             selectedBackup: row,
             showConfirm: true,
