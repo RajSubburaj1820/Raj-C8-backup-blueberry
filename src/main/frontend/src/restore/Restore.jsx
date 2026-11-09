@@ -8,6 +8,8 @@
 
 import React from 'react';
 import RestCallService from "../services/RestCallService";
+import BackupListTable from "../component/BackupListTable";
+import RepositoryTable from "../component/RepositoryTable";
 import {Button, InlineNotification, Tag} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
@@ -90,46 +92,24 @@ class Restore extends React.Component {
 
                 {this.renderMonitorCard()}
 
-                <table id="runnersTable" className="table is-hoverable is-fullwidth">
-                    <thead>
-                    <tr>
-                        <th>Backup ID</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Components</th>
-                        <th>Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {this.state.listBackups ? this.state.listBackups.map((row) =>
-                        <tr key={row.backupId}>
-                            <td>{row.backupId}</td>
-                            <td>{row.backupTime}</td>
-                            <td>{this.renderStatusTag(row)}</td>
-                            <td>
-                                {row.presentComponents && row.presentComponents.map((c, i) =>
-                                    <Tag key={i} type="blue">{c}</Tag>)}
-                                {row.missingComponents && row.missingComponents.length > 0 &&
-                                    row.missingComponents.map((c, i) =>
-                                        <Tag key={"m" + i} type="red">missing {c}</Tag>)}
-                            </td>
-                            <td>{this.renderRestoreButton(row)}</td>
-                        </tr>
-                    ) : null}
-                    </tbody>
-                </table>
+                <BackupListTable rows={this.state.listBackups}
+                                 renderAction={(row) => this.renderRestoreButton(row)}/>
 
                 {this.state.phases.length > 0 &&
                     <Card style={{marginTop: "16px"}}>
                         <Card.Header>Restore phases (Camunda version profile)</Card.Header>
                         <Card.Body>
-                            <ol>
-                                {this.state.phases.map((p) =>
+                            <ul style={{listStyle: "none", paddingLeft: 0}}>
+                                {this.state.phases.map((p, index) =>
                                     <li key={p.id}>
-                                        {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
-                                        {p.kind === "AUTOMATED" && <Tag type="green">Automated</Tag>}
+                                        &bull; {index + 1}. {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
                                     </li>)}
-                            </ol>
+                            </ul>
+                            <p className="text-muted" style={{marginTop: "8px"}}>
+                                The restore must be validated manually: open Operate, Tasklist and Optimize,
+                                check the data from the backup time, and start one test process.
+                                Do not treat the job log as proof.
+                            </p>
                         </Card.Body>
                     </Card>}
 
@@ -175,8 +155,10 @@ class Restore extends React.Component {
             <Card style={{marginTop: "12px", marginBottom: "12px"}}>
                 <Card.Header>Restore progress</Card.Header>
                 <Card.Body>
-                    <p>Status: <Tag type="blue">{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
+                    <p>Status: <Tag type={m.statusRestore === "FAILED" ? "red" : "blue"}>{m.statusRestore}</Tag> Backup ID: {m.backupId}</p>
                     <p>Step {m.step}/{m.totalNumberOfSteps}: {m.stepName}</p>
+                    <p style={{marginBottom: "4px"}}>Repositories used by the restore (the ones of the backup):</p>
+                    <RepositoryTable/>
                     {m.docsRestoreUrl &&
                         <p><a href={m.docsRestoreUrl} target="_blank" rel="noreferrer">Restore documentation</a></p>}
                     {m.messages && m.messages.slice(-5).map((msg, i) =>
@@ -184,23 +166,6 @@ class Restore extends React.Component {
                 </Card.Body>
             </Card>
         );
-    }
-
-    renderStatusTag(row) {
-        const status = row.backupStatus;
-        if (status === "PARTIALBACKUP" || row.complete === false) {
-            return <Tag type="red">Partial</Tag>;
-        }
-        if (status === "COMPLETED" || row.complete === true) {
-            return <Tag type="green">Complete</Tag>;
-        }
-        if (status === "INPROGRESS") {
-            return <Tag type="blue">In progress</Tag>;
-        }
-        if (status === "FAILED") {
-            return <Tag type="red">Failed</Tag>;
-        }
-        return <Tag type="gray">{status || "Unknown"}</Tag>;
     }
 
     renderRestoreButton(row) {

@@ -36,9 +36,12 @@ class Pwc87RestoreExecutorTest {
                 "camunda_zeebe_records_backup_42"
         ));
 
-        new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod())
+        RecordingSeeder seeder = new RecordingSeeder();
+        new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod(), seeder, 0, 3)
                 .execute(42, layout, new OperationLog());
 
+        // The templates exist: nothing to create
+        assertEquals(0, seeder.calls);
         assertEquals(List.of(
                 "camunda_operate_42_8.7.16_part_1_of_2",
                 "camunda_operate_42_8.7.16_part_2_of_2",
@@ -74,7 +77,7 @@ class Pwc87RestoreExecutorTest {
         elasticsearch.snapshots.add("camunda_operate_7_8.7.16_part_1_of_2");
 
         OperationException error = assertThrows(OperationException.class, () ->
-                new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod())
+                new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod(), new RecordingSeeder(), 0, 3)
                         .execute(7, layout, new OperationLog()));
 
         assertTrue(error.getMessage().contains("Operate"));
@@ -95,20 +98,107 @@ class Pwc87RestoreExecutorTest {
         FakeElasticsearch elasticsearch = new FakeElasticsearch();
         elasticsearch.indices.add("operate-list-view");
         elasticsearch.templates.add("operate-template");
+        // The snapshots exist: step 1 is valid, the restore stops later, on the templates
+        elasticsearch.snapshots.addAll(List.of(
+                "camunda_operate_7_8.7.16_part_1_of_1",
+                "camunda_tasklist_7_8.7.16_part_1_of_1",
+                "camunda_zeebe_records_backup_7"));
 
-        assertThrows(OperationException.class, () ->
-                new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod())
+        // The seeder does not create anything: after the checks, the restore stops
+        RecordingSeeder seeder = new RecordingSeeder();
+        OperationException error = assertThrows(OperationException.class, () ->
+                new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod(), seeder, 0, 3)
                         .execute(7, layout, new OperationLog()));
 
+        assertEquals(1, seeder.calls);
+        assertTrue(error.getMessage().contains("curl"));
         assertTrue(elasticsearch.deleted.isEmpty());
         assertFalse(kubernetes.actions.contains("deletePvc zeebe"));
+        // Nothing was stopped
+        assertTrue(kubernetes.actions.stream().noneMatch(action -> action.startsWith("scale")));
+    }
+
+    @Test
+    void createsTheZeebeTemplatesWhenTheyAreMissing() throws Exception {
+        RestoreLayout layout = layout();
+        FakeKubernetes kubernetes = new FakeKubernetes();
+        kubernetes.present(layout.operate(), 1);
+        kubernetes.present(layout.tasklist(), 1);
+        kubernetes.present(layout.gateway(), 1);
+        kubernetes.present(layout.zeebe(), 1);
+        FakeElasticsearch elasticsearch = new FakeElasticsearch();
+        elasticsearch.templates.addAll(List.of("operate-template", "tasklist-template"));
+        elasticsearch.snapshots.addAll(List.of(
+                "camunda_operate_42_8.7.16_part_1_of_2",
+                "camunda_operate_42_8.7.16_part_2_of_2",
+                "camunda_tasklist_42_8.7.16_part_1_of_2",
+                "camunda_tasklist_42_8.7.16_part_2_of_2",
+                "camunda_zeebe_records_backup_42"));
+        // The seeder produces records: Zeebe creates its template
+        RecordingSeeder seeder = new RecordingSeeder();
+        seeder.onSeed = () -> elasticsearch.templates.add("zeebe-record");
+
+        new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod(), seeder, 0, 3)
+                .execute(42, layout, new OperationLog());
+
+        assertEquals(1, seeder.calls);
+        assertFalse(elasticsearch.restored.isEmpty());
+    }
+
+    @Test
+    void restartsAllComponentsWhenTheRestoreFailsAfterTheyWereStopped() {
+        RestoreLayout layout = layout();
+        FakeKubernetes kubernetes = new FakeKubernetes();
+        kubernetes.present(layout.operate(), 1);
+        kubernetes.present(layout.tasklist(), 2);
+        kubernetes.present(layout.gateway(), 1);
+        kubernetes.present(layout.zeebe(), 3);
+        FakeElasticsearch elasticsearch = new FakeElasticsearch();
+        elasticsearch.indices.add("operate-list-view");
+        elasticsearch.templates.addAll(List.of("operate-template", "tasklist-template", "zeebe-record"));
+        elasticsearch.snapshots.addAll(List.of(
+                "camunda_operate_9_8.7.16_part_1_of_1",
+                "camunda_tasklist_9_8.7.16_part_1_of_1",
+                "camunda_zeebe_records_backup_9"));
+        // The indices are deleted, then the restore of a snapshot fails
+        elasticsearch.failRestore = true;
+
+        assertThrows(OperationException.class, () ->
+                new Pwc87RestoreExecutor(kubernetes, elasticsearch, new RestorationPod(), new RecordingSeeder(), 0, 3)
+                        .execute(9, layout, new OperationLog()));
+
+        // Every component is started again with its original number of replicas, after it was stopped
+        assertTrue(kubernetes.actions.lastIndexOf("scale camunda87helm-operate 1")
+                > kubernetes.actions.lastIndexOf("scale camunda87helm-operate 0"));
+        assertTrue(kubernetes.actions.lastIndexOf("scale camunda87helm-tasklist 2")
+                > kubernetes.actions.lastIndexOf("scale camunda87helm-tasklist 0"));
+        assertTrue(kubernetes.actions.lastIndexOf("scale camunda87helm-zeebe 3")
+                > kubernetes.actions.lastIndexOf("scale camunda87helm-zeebe 0"));
+        // A restart must not restore Zeebe again
+        assertTrue(kubernetes.actions.contains("removeEnv camunda87helm-zeebe ZEEBE_RESTORE"));
+        // The Zeebe volumes were not deleted
+        assertFalse(kubernetes.actions.contains("deletePvc zeebe"));
+    }
+
+    private static final class RecordingSeeder implements ZeebeTemplateSeeder {
+        private int calls = 0;
+        private Runnable onSeed = null;
+
+        @Override
+        public void seed(OperationLog log) {
+            calls++;
+            if (onSeed != null) {
+                onSeed.run();
+            }
+        }
     }
 
     private static RestoreLayout layout() {
         return new RestoreLayout(
                 "camunda",
                 "camunda87helm",
-                "camunda-backups",
+                new RestoreLayout.Repositories("operaterepository", "tasklistrepository", "optimizerepository",
+                        "camunda_zeebe_records_backup"),
                 WorkloadRef.deployment("camunda87helm-operate"),
                 WorkloadRef.deployment("camunda87helm-tasklist"),
                 WorkloadRef.deployment("camunda87helm-optimize"),
@@ -123,7 +213,8 @@ class Pwc87RestoreExecutorTest {
 
     private static final class FakeKubernetes implements KubernetesWorkload {
         private final Map<String, Integer> replicas = new LinkedHashMap<>();
-        private final List<String> actions = new ArrayList<>();
+        // The brokers are checked by several threads
+        private final List<String> actions = java.util.Collections.synchronizedList(new ArrayList<>());
 
         void present(WorkloadRef workload, int replicaCount) {
             replicas.put(key(workload), replicaCount);
@@ -210,8 +301,14 @@ class Pwc87RestoreExecutorTest {
             return List.copyOf(snapshots);
         }
 
+        private boolean failRestore = false;
+
         @Override
-        public void restoreSnapshot(String repository, String snapshot) {
+        public void restoreSnapshot(String repository, String snapshot) throws OperationException {
+            if (failRestore) {
+                throw new OperationException(OperationException.BLUEBERRYERRORCODE.ELASTICSEARCH_CLIENT, 500,
+                        "Restore failed", "Elasticsearch can't restore " + snapshot);
+            }
             restored.add(snapshot);
         }
 

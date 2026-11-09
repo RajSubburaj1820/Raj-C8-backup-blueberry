@@ -2,6 +2,8 @@ package io.camunda.blueberry.operation.restoration;
 
 import io.camunda.blueberry.exception.OperationException;
 
+import java.util.List;
+
 /**
  * Kubernetes actions used by the 8.7 restore procedure.
  */
@@ -26,4 +28,14 @@ public interface KubernetesWorkload {
     void deletePersistentVolumeClaimsContaining(String nameToken) throws OperationException;
 
     void waitForPodLog(String podName, String expectedText, int timeoutSeconds) throws OperationException;
+
+    /**
+     * Wait until the log of the pod (the current run of the container, or the previous one) contains one of the texts.
+     *
+     * @return the text found
+     */
+    default String waitForPodLogAny(String podName, List<String> expectedTexts, int timeoutSeconds) throws OperationException {
+        waitForPodLog(podName, expectedTexts.get(0), timeoutSeconds);
+        return expectedTexts.get(0);
+    }
 }

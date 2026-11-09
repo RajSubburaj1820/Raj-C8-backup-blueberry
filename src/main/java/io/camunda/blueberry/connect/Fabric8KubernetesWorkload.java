@@ -12,6 +12,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -64,7 +65,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
     public void scale(WorkloadRef workload, int replicas) throws OperationException {
         switch (workload.kind()) {
             case DEPLOYMENT -> client().apps().deployments().inNamespace(namespace()).withName(workload.name()).scale(replicas);
-            case STATEFUL_SET -> client().apps().statefulSets().inNamespace(namespace()).withName(workload.name()).scale(replicas);
+            case STATEFUL_SET -> retryOnConflict(() -> client().apps().statefulSets().inNamespace(namespace()).withName(workload.name()).scale(replicas));
         }
     }
 
@@ -116,7 +117,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
     @Override
     public void rolloutRestartStatefulSet(String statefulSetName) throws OperationException {
         String restartedAt = Instant.now().toString();
-        client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
+        retryOnConflict(() -> client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
             if (statefulSet.getSpec().getTemplate().getMetadata() == null) {
                 statefulSet.getSpec().getTemplate().setMetadata(new ObjectMeta());
             }
@@ -127,7 +128,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
             }
             annotations.put("kubectl.kubernetes.io/restartedAt", restartedAt);
             return statefulSet;
-        });
+        }));
     }
 
     @Override
@@ -146,19 +147,52 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
 
     @Override
     public void waitForPodLog(String podName, String expectedText, int timeoutSeconds) throws OperationException {
+        waitForPodLogAny(podName, List.of(expectedText), timeoutSeconds);
+    }
+
+    /**
+     * The restore of Zeebe runs in the main container, then the container exits and Kubernetes starts it again.
+     * The log of the first run is lost after a restart: look at the current run and at the previous one.
+     */
+    @Override
+    public String waitForPodLogAny(String podName, List<String> expectedTexts, int timeoutSeconds) throws OperationException {
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         while (System.currentTimeMillis() < deadline) {
-            try {
-                String logs = client().pods().inNamespace(namespace()).withName(podName).getLog();
-                if (logs != null && logs.contains(expectedText)) {
-                    return;
+            for (String logs : readLogs(podName)) {
+                for (String expectedText : expectedTexts) {
+                    if (logs.contains(expectedText)) {
+                        return expectedText;
+                    }
                 }
-            } catch (Exception ignored) {
-                // The broker may still be starting or crash-looping. The runbook treats that as normal.
             }
             sleep();
         }
-        throw kube("Pod " + podName + " did not log \"" + expectedText + "\".");
+        throw kube("Pod " + podName + " did not log any of " + expectedTexts + ".");
+    }
+
+    /**
+     * The log of the current run of the container, then the log of the previous run. A log that can't be read is ignored:
+     * the broker may be starting, or crash-looping, this is normal.
+     */
+    private List<String> readLogs(String podName) {
+        List<String> logs = new ArrayList<>();
+        try {
+            String current = client().pods().inNamespace(namespace()).withName(podName).getLog();
+            if (current != null) {
+                logs.add(current);
+            }
+        } catch (Exception ignored) {
+            // Container not started
+        }
+        try {
+            String previous = client().pods().inNamespace(namespace()).withName(podName).terminated().getLog();
+            if (previous != null) {
+                logs.add(previous);
+            }
+        } catch (Exception ignored) {
+            // No previous run yet
+        }
+        return logs;
     }
 
     private int readyReplicas(WorkloadRef workload) throws OperationException {
@@ -176,7 +210,7 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
     }
 
     private void editZeebeEnv(String statefulSetName, String envName, String value, boolean remove) throws OperationException {
-        client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
+        retryOnConflict(() -> client().apps().statefulSets().inNamespace(namespace()).withName(statefulSetName).edit(statefulSet -> {
             Container container = zeebeContainer(statefulSet);
             List<EnvVar> env = container.getEnv();
             if (env == null) {
@@ -188,7 +222,33 @@ public class Fabric8KubernetesWorkload implements KubernetesWorkload {
                 env.add(new EnvVarBuilder().withName(envName).withValue(value).build());
             }
             return statefulSet;
-        });
+        }));
+    }
+
+    /**
+     * The StatefulSet is updated by its controller (status, pods) while Blueberry modifies it: Kubernetes then answers
+     * 409 "the object has been modified; please apply your changes to the latest version". The edit is a
+     * read-modify-write, so it is simply done again on the latest version.
+     */
+    @FunctionalInterface
+    private interface ThrowingRunnable {
+        void run() throws OperationException;
+    }
+
+    private void retryOnConflict(ThrowingRunnable operation) throws OperationException {
+        int attempt = 0;
+        while (true) {
+            try {
+                operation.run();
+                return;
+            } catch (KubernetesClientException e) {
+                attempt++;
+                if (e.getCode() != 409 || attempt >= 10) {
+                    throw e;
+                }
+                sleep();
+            }
+        }
     }
 
     private static Container zeebeContainer(StatefulSet statefulSet) {

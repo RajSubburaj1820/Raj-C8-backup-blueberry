@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -176,7 +177,10 @@ public class BackupRestController {
         mapRecord.put("components", obj.components.stream()
                 .map(Object::toString)
                 .collect(Collectors.toList()));
+        mapRecord.put("backupTimeUTC", obj.backupTime);
+        mapRecord.put("backupTimeOffset", obj.backupTime.minusMinutes(timezoneOffset));
         mapRecord.put("backupTime", DateOperation.dateTimeToHumanString(obj.backupTime, timezoneOffset));
+
         mapRecord.put("backupStatus", obj.status == null ? "" : obj.status.toString());
         if (backupJob != null && obj.backupId == backupJob.getBackupId()
                 && BackupJob.JOBSTATUS.INPROGRESS.equals(backupJob.getJobStatus())) {

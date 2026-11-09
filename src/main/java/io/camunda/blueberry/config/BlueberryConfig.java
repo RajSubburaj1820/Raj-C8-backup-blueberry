@@ -44,9 +44,6 @@ public class BlueberryConfig {
     @Value("${blueberry.restore.helmRelease:camunda87helm}")
     private String restoreHelmRelease;
 
-    @Value("${blueberry.restore.elasticsearchRepository:}")
-    private String restoreElasticsearchRepository;
-
     @Value("${blueberry.restore.podDeleteTimeoutSeconds:300}")
     private int restorePodDeleteTimeoutSeconds;
 
@@ -147,10 +144,6 @@ public class BlueberryConfig {
         return restoreHelmRelease;
     }
 
-    public String getRestoreElasticsearchRepository() {
-        return restoreElasticsearchRepository;
-    }
-
     public int getRestorePodDeleteTimeoutSeconds() {
         return restorePodDeleteTimeoutSeconds;
     }
@@ -161,6 +154,21 @@ public class BlueberryConfig {
 
     public String getAzureContainerName() {
         return azureContainerName;
+    }
+
+    /**
+     * The container name (bucket for GCS and S3, container for Azure) of the configured container type
+     *
+     * @return the name used by the repository, empty if the type is unknown
+     */
+    public String getContainerName() {
+        String type = containerType == null ? "" : containerType.trim().toLowerCase();
+        return switch (type) {
+            case "gcs" -> gcsBucket;
+            case "s3" -> s3Bucket;
+            case "azure" -> azureContainerName;
+            default -> "";
+        };
     }
 
     public String getAzureBasePath() {

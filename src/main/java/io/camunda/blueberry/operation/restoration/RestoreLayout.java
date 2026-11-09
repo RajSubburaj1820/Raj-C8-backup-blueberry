@@ -9,7 +9,7 @@ import io.camunda.blueberry.config.BlueberryConfig;
 public record RestoreLayout(
         String namespace,
         String helmRelease,
-        String elasticsearchRepository,
+        Repositories repositories,
         WorkloadRef operate,
         WorkloadRef tasklist,
         WorkloadRef optimize,
@@ -20,16 +20,28 @@ public record RestoreLayout(
         int podDeleteTimeoutSeconds,
         int zeebeRestoreTimeoutSeconds
 ) {
+
+    /**
+     * Elasticsearch repositories holding the snapshots of each component.
+     * They are the repositories used by the backup: the same source, the BlueberryConfig.
+     */
+    public record Repositories(String operate, String tasklist, String optimize, String zeebeRecords) {
+
+        public static Repositories from(BlueberryConfig config) {
+            return new Repositories(
+                    config.getOperateRepository(),
+                    config.getTasklistRepository(),
+                    config.getOptimizeRepository(),
+                    config.getZeebeRecordRepository());
+        }
+    }
+
     public static RestoreLayout from(BlueberryConfig config) {
         String release = config.getRestoreHelmRelease();
-        String repository = config.getRestoreElasticsearchRepository();
-        if (repository == null || repository.isBlank()) {
-            repository = config.getOperateRepository();
-        }
         return new RestoreLayout(
                 config.getNamespace(),
                 release,
-                repository,
+                Repositories.from(config),
                 WorkloadRef.deployment(release + "-operate"),
                 WorkloadRef.deployment(release + "-tasklist"),
                 WorkloadRef.deployment(release + "-optimize"),

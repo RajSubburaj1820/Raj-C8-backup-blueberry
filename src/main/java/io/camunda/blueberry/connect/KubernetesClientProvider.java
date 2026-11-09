@@ -2,6 +2,7 @@ package io.camunda.blueberry.connect;
 
 import io.camunda.blueberry.config.BlueberryConfig;
 import io.camunda.blueberry.exception.OperationException;
+import io.fabric8.kubernetes.api.model.ListOptionsBuilder;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
@@ -68,9 +69,14 @@ public class KubernetesClientProvider {
         return Config.autoConfigure(null);
     }
 
+    /**
+     * Is the Kubernetes API reachable, and usable in the namespace? List one deployment of the namespace.
+     * The version of the cluster is not used: the client can't read the version answer of recent clusters (emulationMajor).
+     */
     public boolean ping() {
         try {
-            client().getKubernetesVersion();
+            client().apps().deployments().inNamespace(blueberryConfig.getNamespace())
+                    .list(new ListOptionsBuilder().withLimit(1L).build());
             return true;
         } catch (Exception e) {
             logger.debug("Kubernetes ping failed: {}", e.getMessage());

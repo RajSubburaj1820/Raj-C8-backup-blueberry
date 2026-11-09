@@ -18,4 +18,11 @@ public interface ElasticsearchRestoreApi {
     void restoreSnapshot(String repository, String snapshot) throws OperationException;
 
     List<String> listIndexTemplateNames() throws OperationException;
+
+    /**
+     * Base url of Elasticsearch, used in the messages to give a curl command the user can run
+     */
+    default String baseUrl() {
+        return "http://<elasticsearch>:9200";
+    }
 }

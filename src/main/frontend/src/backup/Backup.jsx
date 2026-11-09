@@ -9,6 +9,8 @@
 import React from 'react';
 import RestCallService from "../services/RestCallService";
 import ControllerPage from "../component/ControllerPage";
+import BackupListTable from "../component/BackupListTable";
+import RepositoryTable from "../component/RepositoryTable";
 
 import {Button, Checkbox, InlineNotification, Tag, TextInput} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
@@ -36,17 +38,17 @@ class Backup extends React.Component {
     componentDidMount() {
         this.monitorBackup();
 
-        // Set up the interval to call schedule() every 10 seconds
+        // Call the monitor every minute
         this.intervalConnectionId = setInterval(() => {
             this.monitorBackup();
-        }, 20000);
+        }, 60000);
 
     }
 
     // Cleanup to clear the interval when the component unmounts
     componentWillUnmount() {
         console.log("Backup: componentWillUnmount");
-        clearInterval(this.intervalId);
+        clearInterval(this.intervalConnectionId);
     }
 
     /*           {JSON.stringify(this.state.runners, null, 2) } */
@@ -158,6 +160,10 @@ class Backup extends React.Component {
                                         <td>Date status</td>
                                         <td>{this.state.currentBackup.dateStatus}</td>
                                     </tr>
+                                    <tr>
+                                        <td style={{verticalAlign: "top"}}>Repository</td>
+                                        <td><RepositoryTable/></td>
+                                    </tr>
                                 </table>
 
 
@@ -198,45 +204,7 @@ class Backup extends React.Component {
                     Restore stays disabled for a partial backup.
                 </InlineNotification>
 
-                <table id="runnersTable" className="table is-hoverable is-fullwidth">
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Status</th>
-                        <th>Components</th>
-                        <th>Missing</th>
-                        <th>Date</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {this.state.listBackups ? this.state.listBackups.map((content) =>
-                        <tr key={content.backupId}>
-                            <td>{content.backupId}</td>
-                            <td>
-                                {this.renderConnectionTag(content.backupStatus, content.complete)}
-                            </td>
-                            <td>
-                                {content.presentComponents && content.presentComponents.length > 0
-                                    ? content.presentComponents.map((component, index) => (
-                                        <Tag key={index} type="blue">{component}</Tag>
-                                    ))
-                                    : content.components && content.components.map((component, index) => (
-                                        <Tag key={index} type="blue">{component}</Tag>
-                                    ))}
-                            </td>
-                            <td>
-                                {content.missingComponents && content.missingComponents.length > 0
-                                    ? content.missingComponents.map((component, index) => (
-                                        <Tag key={"m" + index} type="red">missing {component}</Tag>
-                                    ))
-                                    : <span className="text-muted">None</span>}
-                            </td>
-                            <td>{content.backupTime}</td>
-                        </tr>
-                    ) : <div/>
-                    }
-                    </tbody>
-                </table>
+                <BackupListTable rows={this.state.listBackups}/>
 
                 <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-12">

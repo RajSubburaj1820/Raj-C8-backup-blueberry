@@ -31,11 +31,31 @@ public final class DashboardBackupViewHelper {
             point.put("value", historyBarValue(info.status));
             point.put("status", statusKey(info.status));
             if (info.backupTime != null) {
-                point.put("backupTime", info.backupTime.toString());
+                point.put("backupTime", info.backupTime.toString() + "Z");
             }
             history.add(point);
         }
         return history;
+    }
+
+    /**
+     * All the backups, oldest first (no cap): backup id, status and backup time. The UI groups them by day.
+     */
+    public static List<Map<String, Object>> buildTimeline(List<BackupInfo> listBackups) {
+        List<BackupInfo> sorted = new ArrayList<>(listBackups);
+        sorted.sort(Comparator.comparingLong(BackupInfo::getBackupId));
+
+        List<Map<String, Object>> timeline = new ArrayList<>();
+        for (BackupInfo info : sorted) {
+            Map<String, Object> point = new HashMap<>();
+            point.put("backupId", info.backupId);
+            point.put("status", statusKey(info.status));
+            if (info.backupTime != null) {
+                point.put("backupTime", info.backupTime.toString() + "Z");
+            }
+            timeline.add(point);
+        }
+        return timeline;
     }
 
     public static Map<String, Object> latestBackupSummary(List<BackupInfo> listBackups) {
@@ -51,7 +71,7 @@ public final class DashboardBackupViewHelper {
         summary.put("backupId", latest.backupId);
         summary.put("status", statusKey(latest.status));
         if (latest.backupTime != null) {
-            summary.put("backupTime", latest.backupTime.toString());
+            summary.put("backupTime", latest.backupTime.toString() + "Z");
         }
         return summary;
     }
