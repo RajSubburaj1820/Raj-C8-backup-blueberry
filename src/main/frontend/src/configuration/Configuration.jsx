@@ -150,9 +150,9 @@ class Configuration extends React.Component {
                                     </OverlayTrigger>
                                     <table className="w-full border-collapse border border-gray-300">
                                         <thead>
-                                        <tr className="bg-gray-100">
-                                            <th className="border p-2">Steps</th>
-                                            <th className="border p-2">Status</th>
+                                        <tr>
+                                            <th className="border p-2" style={{background: "#e0e0e0", color: "#161616", fontWeight: "bold"}}>Steps</th>
+                                            <th className="border p-2" style={{background: "#e0e0e0", color: "#161616", fontWeight: "bold"}}>Status</th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -225,6 +225,7 @@ class Configuration extends React.Component {
                                     </table>
                                     <p/>
                                     {/* Documentation Links */}
+                                    {content.urldocumentation && content.urldocumentation.length > 0 &&
                                     <Accordion className="mt-4" defaultActiveKey="0">
                                         <AccordionItem title="Documentation" eventKey="0">
                                             {content.urldocumentation.map((url, index) => (
@@ -235,7 +236,7 @@ class Configuration extends React.Component {
                                                 </p>
                                             ))}
                                         </AccordionItem>
-                                    </Accordion>
+                                    </Accordion>}
                                 </td>
                             </tr>
                         ) : <div/>}

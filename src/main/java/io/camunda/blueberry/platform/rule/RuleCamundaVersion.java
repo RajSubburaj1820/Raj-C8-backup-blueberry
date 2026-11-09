@@ -54,13 +54,13 @@ public class RuleCamundaVersion implements Rule {
                                 + versions.chartLabel() + "]");
             } else {
                 ruleInfo.addVerifications("Helm chart version: " + versions.chartVersion()
-                        + " (" + versions.chartLabel() + ")", RuleStatus.CORRECT, command);
+                        + " (" + versions.chartLabel() + ")", RuleStatus.INFO, command);
             }
             if (versions.camundaVersion().isBlank()) {
                 ruleInfo.addVerificationsWithError("Read the version of Camunda", RuleStatus.FAILED, command,
                         "The label app.kubernetes.io/version and the image tag of " + versions.workload() + " give no version");
             } else {
-                ruleInfo.addVerifications("Camunda version: " + versions.camundaVersion(), RuleStatus.CORRECT, command);
+                ruleInfo.addVerifications("Camunda version: " + versions.camundaVersion(), RuleStatus.INFO, command);
             }
 
             boolean complete = !versions.chartVersion().isBlank() && !versions.camundaVersion().isBlank();
