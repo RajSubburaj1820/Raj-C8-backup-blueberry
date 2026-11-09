@@ -170,7 +170,7 @@ class Dashboard extends React.Component {
                                                 {this.renderConnectionTag(this.state.dashboard.backup.latest.status)}
                                                 {this.state.dashboard.backup.latest.backupTime &&
                                                     <><br/><span
-                                                        className="text-muted">{this.state.dashboard.backup.latest.backupTime}</span></>}
+                                                        className="text-muted">{new Date(this.state.dashboard.backup.latest.backupTime).toLocaleString()}</span></>}
                                             </td>
                                         </tr>}
                                     <tr>

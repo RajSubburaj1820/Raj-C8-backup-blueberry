@@ -48,7 +48,7 @@ class DashboardBackupViewHelperTest {
         assertEquals(30, timeline.size());
         assertEquals(1L, timeline.get(0).get("backupId"));
         assertEquals(30L, timeline.get(29).get("backupId"));
-        assertEquals("2026-01-15T10:00", timeline.get(0).get("backupTime"));
+        assertEquals("2026-01-15T10:00Z", timeline.get(0).get("backupTime"));
     }
 
     @Test

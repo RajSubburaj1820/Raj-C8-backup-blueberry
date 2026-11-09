@@ -38,17 +38,17 @@ class Backup extends React.Component {
     componentDidMount() {
         this.monitorBackup();
 
-        // Set up the interval to call schedule() every 10 seconds
+        // Call the monitor every minute
         this.intervalConnectionId = setInterval(() => {
             this.monitorBackup();
-        }, 20000);
+        }, 60000);
 
     }
 
     // Cleanup to clear the interval when the component unmounts
     componentWillUnmount() {
         console.log("Backup: componentWillUnmount");
-        clearInterval(this.intervalId);
+        clearInterval(this.intervalConnectionId);
     }
 
     /*           {JSON.stringify(this.state.runners, null, 2) } */

@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -304,7 +305,7 @@ public class ElasticSearchConnect implements BackupComponentInt {
                 // value is 2025-05-29T00:16:55.622+0000
                 String timestamp = snapshot.path("start_time").asText();
                 backupInfo.backupTime = Instant.parse(timestamp)
-                        .atZone(ZoneId.systemDefault()) // Use your system's time zone
+                        .atZone(ZoneOffset.UTC) // UTC: the API subtracts the timezone offset of the user (see DateOperation)
                         .toLocalDateTime();
                 listBackups.add(backupInfo);
             }

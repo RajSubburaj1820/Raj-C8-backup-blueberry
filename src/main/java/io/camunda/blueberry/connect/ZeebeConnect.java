@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -337,7 +338,7 @@ public class ZeebeConnect extends WebActuator implements BackupComponentInt {
 
                         String timestamp = details[0].get("createdAt").asText();
                         LocalDateTime localDateTime = Instant.parse(timestamp)
-                                .atZone(ZoneId.systemDefault()) // Convert to system's time zone
+                                .atZone(ZoneOffset.UTC) // UTC: the API subtracts the timezone offset of the user (see DateOperation)
                                 .toLocalDateTime();
 
                         backupInfo.backupTime = localDateTime;
