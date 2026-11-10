@@ -8,6 +8,8 @@ import io.camunda.blueberry.operation.OperationLog;
 import io.camunda.blueberry.operation.backup.BackupCompleteness;
 import io.camunda.blueberry.operation.backup.BackupJob;
 import io.camunda.blueberry.operation.backup.BackupManager;
+import io.camunda.blueberry.platform.version.CamundaVersionService;
+import io.camunda.blueberry.platform.version.RestorePhase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -24,11 +26,37 @@ public class BackupRestController {
 
     private final ZeebeConnect zeebeConnect;
     private final BackupManager backupManager;
+    private final CamundaVersionService versionService;
     Logger logger = LoggerFactory.getLogger(BackupRestController.class);
 
-    public BackupRestController(ZeebeConnect zeebeConnect, BackupManager backupManager) {
+    public BackupRestController(ZeebeConnect zeebeConnect, BackupManager backupManager,
+                                CamundaVersionService versionService) {
         this.zeebeConnect = zeebeConnect;
         this.backupManager = backupManager;
+        this.versionService = versionService;
+    }
+
+    @GetMapping(value = "/api/backup/phases", produces = "application/json")
+    public Map<String, Object> phases() {
+        List<Map<String, Object>> phaseMaps = versionService.getActiveProfile().backupPhases().stream()
+                .map(this::phaseToMap)
+                .collect(Collectors.toList());
+        Map<String, Object> result = new HashMap<>();
+        result.put("phases", phaseMaps);
+        result.put("docsBackupUrl", versionService.getActiveProfile().docsBackupUrl());
+        result.put("camundaMinorVersion", versionService.getActiveProfile().minorVersion());
+        return result;
+    }
+
+    private Map<String, Object> phaseToMap(RestorePhase phase) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", phase.id());
+        map.put("title", phase.title());
+        map.put("kind", phase.kind().name());
+        if (phase.manualHint() != null) {
+            map.put("manualHint", phase.manualHint());
+        }
+        return map;
     }
 
 

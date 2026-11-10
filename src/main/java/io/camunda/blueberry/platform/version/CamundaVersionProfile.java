@@ -27,6 +27,24 @@ public record CamundaVersionProfile(
      * Ordered restore phases. Camunda 8.7 follows the PwC runbook and can run when execution is enabled.
      * Other minors stay manual until a runbook for that version exists.
      */
+    /**
+     * High-level backup steps Blueberry runs for the selected Camunda version (shown in the Backup UI).
+     */
+    public List<RestorePhase> backupPhases() {
+        if ("8.7".equals(minorVersion)) {
+            return List.of(
+                    RestorePhase.automated("webapps", "Backup Operate, Tasklist, and Optimize (Elasticsearch snapshots via actuator)"),
+                    RestorePhase.automated("zeebe_pause", "Pause Zeebe exporters"),
+                    RestorePhase.automated("zeebe_record", "Backup Zeebe record indices in Elasticsearch"),
+                    RestorePhase.automated("zeebe_data", "Backup Zeebe broker data to object storage"),
+                    RestorePhase.automated("zeebe_resume", "Resume Zeebe exporters"));
+        }
+        String doc = docsBackupUrl;
+        return List.of(
+                RestorePhase.manual("overview", "Follow the official Camunda " + minorVersion + " backup procedure",
+                        "See " + doc));
+    }
+
     public List<RestorePhase> restorePhases() {
         if ("8.7".equals(minorVersion)) {
             return List.of(

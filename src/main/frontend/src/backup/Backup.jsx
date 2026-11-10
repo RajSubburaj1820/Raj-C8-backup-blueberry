@@ -29,13 +29,18 @@ class Backup extends React.Component {
             resultCall: {status: 200, error: "", message: "", component: ""},
             listBackups: [],
             listUrlsBackup: [],
-            currentBackup: {statusBackup: ""}
+            currentBackup: {statusBackup: ""},
+            backupPhases: [],
+            docsBackupUrl: "",
+            camundaMinorVersion: ""
 
         };
 
     }
 
     componentDidMount() {
+        this.refreshListBackups();
+        this.loadBackupPhases();
         this.monitorBackup();
 
         // Call the monitor every minute
@@ -119,81 +124,43 @@ class Backup extends React.Component {
                             </Card.Body>
                         </Card>
                     </div>
+                </div>
+
+                <div className="row" style={{marginTop: "10px"}}>
                     <div className="col-md-6">
-                        <Card>
-                            <Card.Header style={{backgroundColor: "rgba(0,0,0,.03)", height: "50px"}}
-                                         className="d-flex justify-content-between align-items-center h-150">Current
-                                backup
-                                <Button className="btn btn-light btn-sm"
-                                        onClick={() => {
-                                            this.monitorBackup();
-                                        }}
-                                        disabled={this.state.display.loading}>
-                                    <ArrowRepeat/>
-                                </Button>
-                            </Card.Header>
-                            <Card.Body>
-
-                                <table style={{borderCollapse: "separate", borderSpacing: "10px"}}>
-                                    <tr>
-                                        <td style={{verticalAlign: "middle"}}>Status</td>
-                                        <td style={{textAlign: "center"}}>
-                                            {this.renderConnectionTag(this.state.currentBackup.statusBackup)}
-
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>backup Id</td>
-                                        <td>{this.state.currentBackup.backupId}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Advancement</td>
-                                        <td>{this.state.currentBackup.step} /
-                                            {this.state.currentBackup.totalNumberOfSteps}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Current operation</td>
-                                        <td>{this.state.currentBackup.stepName}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Date status</td>
-                                        <td>{this.state.currentBackup.dateStatus}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style={{verticalAlign: "top"}}>Repository</td>
-                                        <td><RepositoryTable/></td>
-                                    </tr>
-                                </table>
-
-
-                                <div>
-                                    {this.state.currentBackup?.messages?.map((entry, index) => (
-                                        <div key={index}
-                                             className={`alert ${entry.type === 'ERROR' ? 'alert-danger' : 'alert-info'}`}
-                                             role="alert">
-                                            <strong>{entry.type}</strong> - ({entry.component})
-                                            – {new Date(entry.date).toLocaleString()}<br/>
-                                            {entry.message}
-                                        </div>
-                                    ))}
-                                </div>
-
-
-                            </Card.Body>
-                        </Card>
+                        {this.renderCurrentBackupCard()}
                     </div>
                 </div>
+
                 <div className="row" style={{marginTop: "10px"}}>
                     <Button className="btn btn-success btn-sm"
                             onClick={() => {
                                 this.refreshListBackups();
                                 this.monitorBackup();
+                                this.loadBackupPhases();
                             }}
                             disabled={this.state.display.loading}>
                         <ArrowRepeat/> Refresh
                     </Button>
                 </div>
+
+                {this.state.backupPhases.length > 0 &&
+                    <Card style={{marginTop: "16px"}}>
+                        <Card.Header>Backup phases (Camunda version profile)</Card.Header>
+                        <Card.Body>
+                            <ul style={{listStyle: "none", paddingLeft: 0}}>
+                                {this.state.backupPhases.map((p, index) =>
+                                    <li key={p.id}>
+                                        &bull; {index + 1}. {p.title} {p.kind === "MANUAL" && <Tag type="gray">Manual</Tag>}
+                                    </li>)}
+                            </ul>
+                            {this.state.docsBackupUrl &&
+                                <p className="text-muted" style={{marginTop: "8px", marginBottom: 0}}>
+                                    <a href={this.state.docsBackupUrl} target="_blank" rel="noreferrer">Official backup guide</a>
+                                    {" "}(Camunda {this.state.camundaMinorVersion})
+                                </p>}
+                        </Card.Body>
+                    </Card>}
 
 
                 <InlineNotification kind="info" hideCloseButton="true" lowContrast="false"
@@ -240,6 +207,84 @@ class Backup extends React.Component {
     }
 
 
+    renderCurrentBackupCard() {
+        const cb = this.state.currentBackup;
+        return (
+            <Card>
+                <Card.Header style={{backgroundColor: "rgba(0,0,0,.03)", height: "50px"}}>
+                    Current backup
+                </Card.Header>
+                <Card.Body>
+                    <table style={{borderCollapse: "separate", borderSpacing: "10px"}}>
+                        <tbody>
+                        <tr>
+                            <td style={{verticalAlign: "middle"}}>Status</td>
+                            <td style={{textAlign: "center"}}>
+                                {this.renderConnectionTag(cb.statusBackup)}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Backup Id</td>
+                            <td>{cb.backupId != null ? cb.backupId : "—"}</td>
+                        </tr>
+                        <tr>
+                            <td>Advancement</td>
+                            <td>{cb.step != null ? cb.step : "—"} / {cb.totalNumberOfSteps != null ? cb.totalNumberOfSteps : "—"}</td>
+                        </tr>
+                        <tr>
+                            <td>Current operation</td>
+                            <td>{cb.stepName || "—"}</td>
+                        </tr>
+                        <tr>
+                            <td>Date status</td>
+                            <td>{cb.dateStatus || "—"}</td>
+                        </tr>
+                        <tr>
+                            <td style={{verticalAlign: "top"}}>Repository</td>
+                            <td><RepositoryTable/></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    {this.renderLogMessages(cb.messages)}
+                </Card.Body>
+            </Card>
+        );
+    }
+
+    renderLogMessages(messages) {
+        if (!messages || messages.length === 0) {
+            return null;
+        }
+        return (
+            <div>
+                {messages.map((entry, index) => (
+                    <div key={index}
+                         className={`alert ${entry.type === "ERROR" ? "alert-danger" : "alert-info"}`}
+                         role="alert">
+                        <strong>{entry.type}</strong>
+                        {entry.component ? ` — (${entry.component})` : ""}
+                        {entry.date ? ` – ${new Date(entry.date).toLocaleString()}` : ""}
+                        <br/>
+                        {entry.message}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    loadBackupPhases() {
+        RestCallService.getInstance().getJson('blueberry/api/backup/phases?', this, (httpPayload) => {
+            if (!httpPayload.isError()) {
+                const data = httpPayload.getData();
+                this.setState({
+                    backupPhases: data.phases || [],
+                    docsBackupUrl: data.docsBackupUrl || "",
+                    camundaMinorVersion: data.camundaMinorVersion || ""
+                });
+            }
+        });
+    }
+
     renderConnectionTag(status, complete) {
         if (status === "PARTIALBACKUP" || (status === "COMPLETED" && complete === false)) {
             return <Tag type="magenta">Partial</Tag>;
@@ -273,7 +318,8 @@ class Backup extends React.Component {
     }
 
     monitorBackup() {
-        let uri = '/blueberry/api/backup/monitor?';
+        const tz = new Date().getTimezoneOffset();
+        let uri = '/blueberry/api/backup/monitor?timezoneoffset=' + tz + '&';
         console.log("backup.monitorBackup http[" + uri + "]");
 
         var restCallService = RestCallService.getInstance();

@@ -127,7 +127,7 @@ class Restore extends React.Component {
                     {lines.map((line, i) => <li key={i}>{line}</li>)}
                 </ul>
                 {typeof this.props.onOpenConfiguration === "function" &&
-                    <Button kind="ghost" size="sm" onClick={() => this.props.onOpenConfiguration()}>
+                    <Button className="btn btn-link btn-sm" onClick={() => this.props.onOpenConfiguration()}>
                         Open Configuration
                     </Button>}
                 {!this.props.onOpenConfiguration &&
@@ -155,20 +155,23 @@ class Restore extends React.Component {
                     </div>
                 </div>
                 <div className="row" style={{marginTop: "10px"}}>
-                    <div className="col-md-4">
-                        <Button className="btn btn-success btn-sm"
-                                onClick={() => {
-                                    this.refreshListBackup();
-                                    this.loadReadiness();
-                                    this.loadPhases();
-                                }}
-                                disabled={this.state.display.loading}>
-                            <ArrowRepeat/> Refresh backups &amp; readiness
-                        </Button>
+                    <div className="col-md-6">
+                        {this.renderCurrentRestoreCard()}
                     </div>
                 </div>
 
-                {this.renderMonitorCard()}
+                <div className="row" style={{marginTop: "10px"}}>
+                    <Button className="btn btn-success btn-sm"
+                            onClick={() => {
+                                this.refreshListBackup();
+                                this.loadReadiness();
+                                this.loadPhases();
+                                this.monitorRestore();
+                            }}
+                            disabled={this.state.display.loading}>
+                        <ArrowRepeat/> Refresh
+                    </Button>
+                </div>
 
                 <BackupListTable rows={this.state.listBackups}
                                  renderAction={(row) => this.renderRestoreButton(row)}/>
@@ -212,8 +215,9 @@ class Restore extends React.Component {
                             <p><a href={this.state.preflight.docsRestoreUrl} target="_blank" rel="noreferrer">Official restore guide</a> (Camunda {this.state.preflight.camundaMinorVersion})</p>}
                     </Modal.Body>
                     <Modal.Footer>
-                        <Button kind="secondary" onClick={() => this.setState({showConfirm: false})}>Cancel</Button>
-                        <Button kind="danger"
+                        <Button className="btn btn-secondary btn-sm"
+                                onClick={() => this.setState({showConfirm: false})}>Cancel</Button>
+                        <Button className="btn btn-danger btn-sm"
                                 disabled={!this.state.preflight?.allowed || this.state.preflightLoading || !this.restoreActionsAllowed()}
                                 onClick={() => this.startRestore()}>
                             Start restore
@@ -224,7 +228,10 @@ class Restore extends React.Component {
         )
     }
 
-    renderMonitorStatusTag(status) {
+    renderRestoreStatusTag(status) {
+        if (!status || status === "READY") {
+            return <Tag type="green">Ready</Tag>;
+        }
         if (status === "FAILED") {
             return <Tag type="red">Failed</Tag>;
         }
@@ -240,32 +247,76 @@ class Restore extends React.Component {
         return <Tag type="blue">{status}</Tag>;
     }
 
-    renderMonitorCard() {
-        const m = this.state.restoreMonitor;
-        if (!m || m.statusRestore === "READY") {
+    renderLogMessages(messages) {
+        if (!messages || messages.length === 0) {
             return null;
         }
         return (
-            <Card style={{marginTop: "12px", marginBottom: "12px"}}>
-                <Card.Header>Restore progress</Card.Header>
+            <div>
+                {messages.map((entry, index) => (
+                    <div key={index}
+                         className={`alert ${entry.type === "ERROR" ? "alert-danger" : "alert-info"}`}
+                         role="alert">
+                        <strong>{entry.type}</strong>
+                        {entry.component ? ` — (${entry.component})` : ""}
+                        {entry.date ? ` – ${new Date(entry.date).toLocaleString()}` : ""}
+                        <br/>
+                        {entry.message}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    renderCurrentRestoreCard() {
+        const m = this.state.restoreMonitor || {statusRestore: "READY"};
+        return (
+            <Card style={{marginTop: "0", marginBottom: "12px"}}>
+                <Card.Header style={{backgroundColor: "rgba(0,0,0,.03)", height: "50px"}}>
+                    Current restore
+                </Card.Header>
                 <Card.Body>
-                    <p>Status: {this.renderMonitorStatusTag(m.statusRestore)} Backup ID: {m.backupId}</p>
+                    <table style={{borderCollapse: "separate", borderSpacing: "10px"}}>
+                        <tbody>
+                        <tr>
+                            <td style={{verticalAlign: "middle"}}>Status</td>
+                            <td>{this.renderRestoreStatusTag(m.statusRestore)}</td>
+                        </tr>
+                        <tr>
+                            <td>Backup Id</td>
+                            <td>{m.backupId != null ? m.backupId : "—"}</td>
+                        </tr>
+                        <tr>
+                            <td>Advancement</td>
+                            <td>{m.step != null ? m.step : "—"} / {m.totalNumberOfSteps != null ? m.totalNumberOfSteps : "—"}</td>
+                        </tr>
+                        <tr>
+                            <td>Current operation</td>
+                            <td>{m.stepName || "—"}</td>
+                        </tr>
+                        <tr>
+                            <td>Date status</td>
+                            <td>{m.dateStatus || "—"}</td>
+                        </tr>
+                        <tr>
+                            <td style={{verticalAlign: "top"}}>Repository</td>
+                            <td><RepositoryTable/></td>
+                        </tr>
+                        </tbody>
+                    </table>
                     {m.statusRestore === "TERMINATED" &&
-                        <InlineNotification kind="info" hideCloseButton="true" lowContrast="true">
+                        <InlineNotification kind="info" hideCloseButton="true" lowContrast="true" style={{marginTop: "8px"}}>
                             Automated restore steps finished. Validate Operate, Tasklist, and Optimize, then run a test process.
-                            This is not the same as a failed restore.
                         </InlineNotification>}
                     {m.statusRestore === "FAILED" &&
-                        <InlineNotification kind="error" hideCloseButton="true" lowContrast="false">
-                            Restore failed. See the step and log messages below for the failing phase.
+                        <InlineNotification kind="error" hideCloseButton="true" lowContrast="false" style={{marginTop: "8px"}}>
+                            Restore failed. See ERROR messages below for the failing phase.
                         </InlineNotification>}
-                    <p>Step {m.step}/{m.totalNumberOfSteps}: {m.stepName}</p>
-                    <p style={{marginBottom: "4px"}}>Repositories used by the restore (the ones of the backup):</p>
-                    <RepositoryTable/>
                     {m.docsRestoreUrl &&
-                        <p><a href={m.docsRestoreUrl} target="_blank" rel="noreferrer">Restore documentation</a></p>}
-                    {m.messages && m.messages.slice(-5).map((msg, i) =>
-                        <div key={i} style={{fontSize: "0.85rem"}}>{msg.message}</div>)}
+                        <p style={{marginTop: "8px"}}>
+                            <a href={m.docsRestoreUrl} target="_blank" rel="noreferrer">Restore documentation</a>
+                        </p>}
+                    {this.renderLogMessages(m.messages)}
                 </Card.Body>
             </Card>
         );
@@ -277,7 +328,7 @@ class Restore extends React.Component {
 
         if (backupOk && actionsAllowed) {
             return (
-                <Button size="sm" onClick={() => this.openConfirm(row)}>
+                <Button className="btn btn-warning btn-sm" onClick={() => this.openConfirm(row)}>
                     Restore
                 </Button>
             );
@@ -301,7 +352,7 @@ class Restore extends React.Component {
         return (
             <OverlayTrigger placement="top" overlay={<Tooltip id={"tt-" + row.backupId}>{reason}</Tooltip>}>
                 <span className="d-inline-block">
-                    <Button size="sm" disabled style={{pointerEvents: "none"}}>Restore</Button>
+                    <Button className="btn btn-warning btn-sm" disabled style={{pointerEvents: "none"}}>Restore</Button>
                 </span>
             </OverlayTrigger>
         );
@@ -349,7 +400,8 @@ class Restore extends React.Component {
     }
 
     monitorRestore() {
-        RestCallService.getInstance().getJson('blueberry/api/restore/monitor?', this, (httpPayload) => {
+        const tz = new Date().getTimezoneOffset();
+        RestCallService.getInstance().getJson('blueberry/api/restore/monitor?timezoneoffset=' + tz + '&', this, (httpPayload) => {
             if (!httpPayload.isError()) {
                 this.setState({restoreMonitor: httpPayload.getData()});
             }
