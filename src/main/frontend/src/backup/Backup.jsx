@@ -11,6 +11,7 @@ import RestCallService from "../services/RestCallService";
 import ControllerPage from "../component/ControllerPage";
 import BackupListTable from "../component/BackupListTable";
 import RepositoryTable from "../component/RepositoryTable";
+import {renderOperationLogMessages} from "../component/OperationLogMessages";
 
 import {Button, Checkbox, InlineNotification, Tag, TextInput} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
@@ -245,30 +246,9 @@ class Backup extends React.Component {
                         </tr>
                         </tbody>
                     </table>
-                    {this.renderLogMessages(cb.messages)}
+                    {renderOperationLogMessages(cb.messages)}
                 </Card.Body>
             </Card>
-        );
-    }
-
-    renderLogMessages(messages) {
-        if (!messages || messages.length === 0) {
-            return null;
-        }
-        return (
-            <div>
-                {messages.map((entry, index) => (
-                    <div key={index}
-                         className={`alert ${entry.type === "ERROR" ? "alert-danger" : "alert-info"}`}
-                         role="alert">
-                        <strong>{entry.type}</strong>
-                        {entry.component ? ` — (${entry.component})` : ""}
-                        {entry.date ? ` – ${new Date(entry.date).toLocaleString()}` : ""}
-                        <br/>
-                        {entry.message}
-                    </div>
-                ))}
-            </div>
         );
     }
 

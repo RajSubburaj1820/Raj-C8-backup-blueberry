@@ -10,6 +10,7 @@ import React from 'react';
 import RestCallService from "../services/RestCallService";
 import BackupListTable from "../component/BackupListTable";
 import RepositoryTable from "../component/RepositoryTable";
+import {renderOperationLogMessages} from "../component/OperationLogMessages";
 import {Button, InlineNotification, Tag} from "carbon-components-react";
 import {ArrowRepeat} from "react-bootstrap-icons";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
@@ -247,27 +248,6 @@ class Restore extends React.Component {
         return <Tag type="blue">{status}</Tag>;
     }
 
-    renderLogMessages(messages) {
-        if (!messages || messages.length === 0) {
-            return null;
-        }
-        return (
-            <div>
-                {messages.map((entry, index) => (
-                    <div key={index}
-                         className={`alert ${entry.type === "ERROR" ? "alert-danger" : "alert-info"}`}
-                         role="alert">
-                        <strong>{entry.type}</strong>
-                        {entry.component ? ` — (${entry.component})` : ""}
-                        {entry.date ? ` – ${new Date(entry.date).toLocaleString()}` : ""}
-                        <br/>
-                        {entry.message}
-                    </div>
-                ))}
-            </div>
-        );
-    }
-
     renderCurrentRestoreCard() {
         const m = this.state.restoreMonitor || {statusRestore: "READY"};
         return (
@@ -316,7 +296,7 @@ class Restore extends React.Component {
                         <p style={{marginTop: "8px"}}>
                             <a href={m.docsRestoreUrl} target="_blank" rel="noreferrer">Restore documentation</a>
                         </p>}
-                    {this.renderLogMessages(m.messages)}
+                    {renderOperationLogMessages(m.messages)}
                 </Card.Body>
             </Card>
         );
